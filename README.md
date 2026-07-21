@@ -52,16 +52,17 @@ CLI / MCP → ApplicationService → planner/executor / prepare_content
 ## Docs
 
 1. `CODEX_HANDOFF_CURRENT.md` (authoritative continuation prompt)
-2. `docs/MAC_MINI_DEPLOYMENT.md` (source/runtime cutover)
-3. `docs/PRODUCT_SPEC.md`
-4. `docs/PROVIDER_AUTOMATION_PLAN.md` (content routing)
-5. `docs/REMEDIATION_PLAN.md` (15 foundational repairs)
-6. `docs/ARCHITECTURE.md`
-7. `docs/ACCEPTANCE_TESTS.md`
-8. `docs/DECISION_LOG.md`
-9. `docs/CAPABILITY_REPORT.md`
-10. `docs/INSTALL.md`
-11. `docs/LIVING_ROOM_NETFLIX_LIVE_GATE.md`
+2. `docs/MAC_MINI_CUTOVER_STATUS.md` (current runtime truth)
+3. `docs/MAC_MINI_DEPLOYMENT.md` (source/runtime cutover)
+4. `docs/PRODUCT_SPEC.md`
+5. `docs/PROVIDER_AUTOMATION_PLAN.md` (content routing)
+6. `docs/REMEDIATION_PLAN.md` (15 foundational repairs)
+7. `docs/ARCHITECTURE.md`
+8. `docs/ACCEPTANCE_TESTS.md`
+9. `docs/DECISION_LOG.md`
+10. `docs/CAPABILITY_REPORT.md`
+11. `docs/INSTALL.md`
+12. `docs/LIVING_ROOM_NETFLIX_LIVE_GATE.md`
 
 Private LAN inventory lives under `discovery/` and is gitignored.
 
