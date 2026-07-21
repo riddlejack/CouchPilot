@@ -1,0 +1,30 @@
+.venv/
+.venv-pmd3/
+.venv-discovery/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.DS_Store
+*.log
+.env
+credentials*.json
+secrets*.yaml
+*.pem
+*.key
+
+# Local private runtime / live reports (may contain LAN details)
+docs/live/
+.home-media/
+
+# Private discovery inventory (LAN addresses / stable IDs) — never publish
+discovery/NETWORK_SNAPSHOT.md
+discovery/NETWORK_SNAPSHOT.private.md
+discovery/devices.yaml
+discovery/*.private.yaml
+
+# Calibration screenshots / recipe fixtures may contain profile/viewing data
+.private/
+fixtures/private/

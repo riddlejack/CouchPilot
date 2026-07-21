@@ -1,0 +1,89 @@
+[project]
+name = "home-media"
+version = "0.1.0"
+description = "Local-first room-aware control for Apple TV, physical TVs, and Sonos"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "pyatv>=0.18,<0.19",
+  "mcp>=1.28,<2",
+  "typer>=0.16",
+  "rich>=13",
+  "pydantic>=2.10",
+  "pydantic-settings>=2.7",
+  "pyyaml>=6.0",
+  "soco>=0.30",
+  "androidtvremote2>=0.3.1",
+  "httpx>=0.28",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3",
+  "pytest-asyncio>=0.25",
+  "ruff>=0.11",
+  "mypy>=1.15",
+  "types-PyYAML>=6.0",
+]
+# GPL-3.0 optional tool. home-media never imports it; capture shells out via argv.
+# Installing this extra has distribution consequences for combined redistributions.
+screenshot = [
+  "pymobiledevice3>=9.30",
+]
+
+[project.scripts]
+home-media = "home_media.cli:app"
+home-media-mcp = "home_media.mcp_server:main"
+
+[build-system]
+requires = ["uv_build>=0.11.8,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv]
+package = true
+
+# Ship the Vision OCR Swift helper source inside the wheel/sdist.
+[tool.uv.build-backend]
+module-name = "home_media"
+module-root = "src"
+source-include = [
+  "src/home_media/observers/native/**",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+  "live: opt-in tests that touch physical devices",
+]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = ["home_media"]
+mypy_path = "src"
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = [
+  "soco",
+  "soco.*",
+  "androidtvremote2",
+  "androidtvremote2.*",
+  "pymobiledevice3",
+  "pymobiledevice3.*",
+  "PIL",
+  "PIL.*",
+]
+ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["home_media"]
