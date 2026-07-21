@@ -1,0 +1,202 @@
+# Sanitized example / fake seed. Replace identifiers from private live discovery.
+# TEST-NET addresses and zero-prefixed UUIDs below are not real household devices.
+schema_version: 1
+home_name: primary
+mutations_enabled: true
+volume_ceiling: 40
+volume_ceiling_override_required: true
+rooms:
+- key: lounge
+  display_name: Lounge
+  aliases:
+  - lounge tv
+  - screening room
+  - the lounge
+  apple_tv_id: 00000000-0000-4000-8000-000000000001
+  physical_tv_id: sony-lounge-tv
+  audio_id: sonos-lounge-beam
+  preferred_volume_target: sonos
+  preferred_power_path: both
+- key: guest_room
+  display_name: Guest Room
+  aliases:
+  - guest room
+  apple_tv_id: 00000000-0000-4000-8000-000000000002
+  physical_tv_id: null
+  audio_id: sonos-guest-room-arc
+  preferred_volume_target: sonos
+  preferred_power_path: both
+- key: loft
+  display_name: Loft
+  aliases:
+  - loft
+  apple_tv_id: 00000000-0000-4000-8000-000000000003
+  physical_tv_id: null
+  audio_id: sonos-loft-arc
+  preferred_volume_target: sonos
+  preferred_power_path: both
+- key: living_room
+  display_name: Living Room
+  aliases:
+  - living room
+  apple_tv_id: 00000000-0000-4000-8000-000000000004
+  physical_tv_id: null
+  audio_id: sonos-living-room-beam
+  preferred_volume_target: sonos
+  preferred_power_path: both
+- key: studio
+  display_name: Studio
+  aliases:
+  - studio
+  - studio 2
+  - studio (2)
+  apple_tv_id: 00000000-0000-4000-8000-000000000005
+  physical_tv_id: null
+  audio_id: null
+  preferred_volume_target: none
+  preferred_power_path: both
+- key: sunroom
+  display_name: Sunroom
+  aliases:
+  - sunroom
+  apple_tv_id: null
+  physical_tv_id: sony-sunroom
+  audio_id: null
+  preferred_volume_target: none
+  preferred_power_path: both
+devices:
+- id: 00000000-0000-4000-8000-000000000001
+  kind: apple_tv
+  room_key: lounge
+  adapter: apple_tv
+  aliases:
+  - Lounge Apple TV
+  vendor: Apple
+  model: Apple TV 4K (gen 2)
+  preferred: false
+  vendor_stable_id: null
+- id: sony-lounge-tv
+  kind: physical_tv
+  room_key: lounge
+  adapter: android_tv
+  aliases:
+  - Lounge TV
+  - Lounge Sony
+  vendor: Sony
+  model: BRAVIA 4K GB
+  preferred: false
+  vendor_stable_id: null
+- id: sonos-lounge-beam
+  kind: audio
+  room_key: lounge
+  adapter: sonos
+  aliases:
+  - Lounge
+  - Lounge Beam
+  - Lounge Sonos
+  vendor: Sonos
+  model: Beam
+  preferred: false
+  vendor_stable_id: RINCON_00000000000101400
+- id: 00000000-0000-4000-8000-000000000002
+  kind: apple_tv
+  room_key: guest_room
+  adapter: apple_tv
+  aliases:
+  - Guest Room Apple TV
+  vendor: Apple
+  model: Apple TV 4K (gen 2)
+  preferred: false
+  vendor_stable_id: null
+- id: sonos-guest-room-arc
+  kind: audio
+  room_key: guest_room
+  adapter: sonos
+  aliases:
+  - Guest Room
+  - Guest Room Arc
+  vendor: Sonos
+  model: Arc
+  preferred: false
+  vendor_stable_id: RINCON_00000000000201400
+- id: 00000000-0000-4000-8000-000000000003
+  kind: apple_tv
+  room_key: loft
+  adapter: apple_tv
+  aliases:
+  - Loft Apple TV
+  vendor: Apple
+  model: Apple TV 4K (gen 2)
+  preferred: false
+  vendor_stable_id: null
+- id: sonos-loft-arc
+  kind: audio
+  room_key: loft
+  adapter: sonos
+  aliases:
+  - Loft
+  - Loft Arc
+  vendor: Sonos
+  model: Arc
+  preferred: false
+  vendor_stable_id: RINCON_00000000000301400
+- id: 00000000-0000-4000-8000-000000000004
+  kind: apple_tv
+  room_key: living_room
+  adapter: apple_tv
+  aliases:
+  - Living Room Apple TV
+  vendor: Apple
+  model: Apple TV 4K (gen 3)
+  preferred: false
+  vendor_stable_id: null
+- id: sonos-living-room-beam
+  kind: audio
+  room_key: living_room
+  adapter: sonos
+  aliases:
+  - Living Room
+  - Living Room Beam
+  vendor: Sonos
+  model: Beam
+  preferred: false
+  vendor_stable_id: RINCON_00000000000401400
+- id: 00000000-0000-4000-8000-000000000005
+  kind: apple_tv
+  room_key: studio
+  adapter: apple_tv
+  aliases:
+  - Studio (2)
+  - Studio Apple TV
+  vendor: Apple
+  model: Apple TV 4K
+  preferred: false
+  vendor_stable_id: null
+- id: sony-sunroom
+  kind: physical_tv
+  room_key: sunroom
+  adapter: android_tv
+  aliases:
+  - Sunroom
+  vendor: Sony
+  model: BRAVIA 4K GB
+  preferred: false
+  vendor_stable_id: null
+content_aliases:
+  avatar-tla: https://www.netflix.com/title/70142405
+  avatar the last airbender: https://www.netflix.com/title/70142405
+app_aliases:
+  netflix: com.netflix.Netflix
+  youtube: com.google.ios.youtube
+  disney: com.disney.disneyplus
+  disney+: com.disney.disneyplus
+  max: com.hbo.hbonow
+  hbo: com.hbo.hbonow
+  appletv: com.apple.TVWatchList
+  apple tv: com.apple.TVWatchList
+  apple tv+: com.apple.TVWatchList
+provider_prefs:
+  netflix:
+    profile_name: primary
+    profile_index: 2
+    profile_select: second
