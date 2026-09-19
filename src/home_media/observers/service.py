@@ -8,7 +8,6 @@ from typing import Any
 
 from home_media.errors import SafetyBlockedError, UnsupportedError
 from home_media.observers.binding import ObserverBindingStore, fingerprint_udid
-from home_media.observers.capture import PyMobileDeviceScreenshotCapturer
 from home_media.observers.classify import (
     FakeLabelClassifier,
     ScreenClassifier,
@@ -22,6 +21,7 @@ from home_media.observers.screenshot import (
     ScreenshotResult,
     UnavailableScreenshotProvider,
 )
+from home_media.observers.stream import ScreenshotCapturer, configured_screenshot_capturer
 from home_media.providers.base import ProviderState
 from home_media.registry import RoomRegistry
 
@@ -39,14 +39,14 @@ class RoomScreenshotService:
         *,
         bindings: ObserverBindingStore | None = None,
         provider: ScreenshotProvider | None = None,
-        capturer: PyMobileDeviceScreenshotCapturer | None = None,
+        capturer: ScreenshotCapturer | None = None,
         classifier: ScreenClassifier | None = None,
         require_gate: bool | None = None,
     ) -> None:
         self.registry = registry
         self.bindings = bindings if bindings is not None else ObserverBindingStore.empty()
         self.bindings.validate_unique_udids()
-        self._capturer = capturer or PyMobileDeviceScreenshotCapturer()
+        self._capturer = capturer or configured_screenshot_capturer()
         self._provider = provider
         self._classifier = classifier
         if require_gate is None:
@@ -118,6 +118,42 @@ class RoomScreenshotService:
             )
         self.bindings.get_for_room(room_key, expected_stable_id=stable_device_id)
 
+    def health_snapshot(self) -> dict[str, Any]:
+        """Safe observer/worker state without raw identifiers or file paths."""
+        capturer_health = getattr(self._capturer, "health_snapshot", None)
+        try:
+            worker = (
+                dict(capturer_health())
+                if callable(capturer_health)
+                else {"status": "one_shot", "persistent": False}
+            )
+        except Exception:  # noqa: BLE001 -- never expose backend exception details
+            worker = {
+                "status": "degraded",
+                "last_error_code": "health_snapshot_failed",
+            }
+        worker_status = str(worker.get("status", "degraded"))
+        if not self.bindings.bindings:
+            status = "unconfigured"
+        elif worker_status in {"degraded", "failed", "closed", "unavailable"}:
+            status = "degraded"
+        elif worker_status == "ready":
+            status = "ready"
+        elif worker_status in {"starting", "warming"}:
+            status = "starting"
+        else:
+            status = "configured"
+        return {
+            "status": status,
+            "binding_count": len(self.bindings.bindings),
+            "worker": worker,
+        }
+
+    async def aclose(self) -> None:
+        close = getattr(self._capturer, "aclose", None)
+        if close is not None:
+            await close()
+
     async def capture_room(
         self,
         room: str,
@@ -127,9 +163,22 @@ class RoomScreenshotService:
     ) -> ScreenshotResult:
         room_key, stable_id = self.apple_tv_id_for_room(room)
         # Enforce binding room match when bindings exist for this device.
+        binding = None
         if stable_id in self.bindings.bindings:
-            self.bindings.get_for_room(room_key, expected_stable_id=stable_id)
+            binding = self.bindings.get_for_room(room_key, expected_stable_id=stable_id)
         result = await self.provider.capture(stable_id, room_key)
+        if result.device_id != stable_id or result.room_key != room_key:
+            raise SafetyBlockedError(
+                "Screenshot provider returned a different room or device identity",
+                reason="capture_identity_mismatch",
+            )
+        if binding is not None:
+            expected_fingerprint = fingerprint_udid(binding.observer_udid)
+            if result.observer_udid_fingerprint != expected_fingerprint:
+                raise SafetyBlockedError(
+                    "Screenshot observer identity did not match the confirmed binding",
+                    reason="capture_observer_identity_mismatch",
+                )
         if result.png_bytes and result.metadata.sha256 and save:
             path = save_png_private(
                 result.png_bytes,

@@ -6,7 +6,7 @@ import os
 import time
 from pathlib import Path
 
-from home_media.config import ensure_private_dir, ensure_private_file
+from home_media.config import ensure_private_dir, write_private_bytes
 
 DEFAULT_SCREENSHOT_DIR = Path.home() / ".config" / "home-media" / "screenshots"
 DEFAULT_RETENTION_S = 24 * 60 * 60  # 24h
@@ -34,9 +34,7 @@ def save_png_private(
     stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
     name = f"{room_key}_{stamp}_{sha256[:12]}.png"
     path = root / name
-    path.write_bytes(png_bytes)
-    ensure_private_file(path)
-    return path
+    return write_private_bytes(path, png_bytes)
 
 
 def prune_screenshots(

@@ -14,6 +14,7 @@ from rich.table import Table
 
 from home_media import __version__
 from home_media.errors import HomeMediaError, SafetyBlockedError
+from home_media.hub import HomeMediaHub
 from home_media.service import ApplicationService
 
 
@@ -60,14 +61,18 @@ console = Console(stderr=True)
 _active_services: list[ApplicationService] = []
 
 
-def _svc(use_fakes: bool | None = None) -> ApplicationService:
+def _build_service(use_fakes: bool | None = None) -> ApplicationService:
     if use_fakes is None:
         use_fakes = os.environ.get("HOME_MEDIA_USE_FAKES", "").lower() in {"1", "true", "yes"}
     cfg = os.environ.get("HOME_MEDIA_CONFIG")
-    service = ApplicationService.from_config_path(
+    return ApplicationService.from_config_path(
         Path(cfg) if cfg else None,
         use_fakes=use_fakes,
     )
+
+
+def _svc(use_fakes: bool | None = None) -> ApplicationService:
+    service = _build_service(use_fakes)
     _active_services.append(service)
     return service
 
@@ -136,6 +141,19 @@ def main(
 @app.command("version")
 def version_cmd(ctx: typer.Context) -> None:
     _emit({"version": __version__}, json_mode=ctx.obj["json"])
+
+
+@app.command("health")
+def health_cmd(ctx: typer.Context) -> None:
+    async def _health() -> Any:
+        hub = HomeMediaHub(lambda: _build_service(ctx.obj["fakes"]))
+        try:
+            await hub.start()
+            return await hub.health()
+        finally:
+            await hub.aclose()
+
+    _handle(_health(), ctx.obj["json"])
 
 
 @app.command("discover")
@@ -566,10 +584,15 @@ def screen_bind(
 @screen_app.command("pair")
 def screen_pair(
     ctx: typer.Context,
-    name: str | None = typer.Option(
-        None,
+    name: str = typer.Option(
+        ...,
         "--name",
-        help="Optional display name filter passed to pymobiledevice3 remote pair",
+        help="Exact on-screen Apple TV display name passed to pymobiledevice3",
+    ),
+    confirm_physical_presence: bool = typer.Option(
+        False,
+        "--confirm-physical-presence",
+        help="Confirm you are at that television and it is safe to show a pairing code",
     ),
 ) -> None:
     """Interactive developer remote-pair. PIN is typed into the child process, never argv.
@@ -577,17 +600,25 @@ def screen_pair(
     Prerequisite: on the Apple TV open Settings → Remotes and Devices →
     Remote App and Devices and leave that screen open.
     """
-    import shutil
     import subprocess
-    import sys
 
-    exe = os.environ.get("HOME_MEDIA_PYMOBILEDEVICE3") or shutil.which("pymobiledevice3")
-    if exe:
+    if not confirm_physical_presence:
+        exc = SafetyBlockedError(
+            "Screenshot pairing requires physical presence at the named television",
+            reason="physical_presence_confirmation_required",
+        )
+        _emit(None, json_mode=ctx.obj["json"], ok=False, error=exc.to_dict())
+        raise typer.Exit(code=2)
+
+    from home_media.observers.capture import resolve_capture_python
+
+    exe = resolve_capture_python()
+    exe_name = Path(exe).name
+    if exe_name == "pymobiledevice3":
         argv = [exe, "remote", "pair"]
     else:
-        argv = [sys.executable, "-m", "pymobiledevice3", "remote", "pair"]
-    if name:
-        argv.extend(["--name", name])
+        argv = [exe, "-m", "pymobiledevice3", "remote", "pair"]
+    argv.extend(["--name", name])
     console.print(
         "[yellow]Starting interactive pymobiledevice3 remote pair. "
         "Enter the six-digit PIN in this terminal when prompted. "

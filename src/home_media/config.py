@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import contextlib
 import os
+import stat
+import tempfile
 from pathlib import Path
 
 import yaml
@@ -33,6 +35,65 @@ def ensure_private_file(path: Path) -> Path:
     return path
 
 
+def create_private_file(path: Path) -> Path:
+    """Create an empty mode-0600 file, or validate an existing private file."""
+    ensure_private_dir(path.parent)
+    flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_CLOEXEC", 0)
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(path, flags, 0o600)
+    except FileExistsError:
+        return validate_private_file(path)
+    except OSError as exc:
+        raise ConfigError("Private runtime file could not be created safely") from exc
+    else:
+        os.close(fd)
+    return validate_private_file(path)
+
+
+def validate_private_file(path: Path, *, label: str = "private runtime file") -> Path:
+    """Fail closed before reading secrets with unsafe ownership/type/mode."""
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        raise ConfigError(f"{label} not found") from None
+    if stat.S_ISLNK(info.st_mode) or not stat.S_ISREG(info.st_mode):
+        raise ConfigError(f"{label} must be a regular file, not a symlink")
+    if hasattr(os, "geteuid") and info.st_uid != os.geteuid():
+        raise ConfigError(f"{label} must be owned by the current user")
+    if stat.S_IMODE(info.st_mode) & 0o077:
+        raise ConfigError(f"{label} permissions must be 0600 or stricter")
+    return path
+
+
+def write_private_bytes(path: Path, payload: bytes) -> Path:
+    """Atomically replace a private file without a world-readable creation window."""
+    ensure_private_dir(path.parent)
+    fd, raw_tmp = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent)
+    )
+    tmp = Path(raw_tmp)
+    try:
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(tmp, path)
+        ensure_private_file(path)
+        return path
+    except Exception:
+        with contextlib.suppress(OSError):
+            os.close(fd)
+        with contextlib.suppress(OSError):
+            tmp.unlink()
+        raise
+
+
+def write_private_text(path: Path, text: str) -> Path:
+    return write_private_bytes(path, text.encode("utf-8"))
+
+
 def config_path_from_env() -> Path:
     override = os.environ.get("HOME_MEDIA_CONFIG")
     if override:
@@ -49,9 +110,9 @@ def credentials_dir() -> Path:
 
 def pyatv_storage_path() -> Path:
     override = os.environ.get("HOME_MEDIA_PYATV_STORAGE")
-    if override:
-        return ensure_private_file(Path(override).expanduser())
-    return ensure_private_file(DEFAULT_PYATV_STORAGE)
+    path = Path(override).expanduser() if override else DEFAULT_PYATV_STORAGE
+    ensure_private_dir(path.parent)
+    return path
 
 
 def android_cert_dir() -> Path:
@@ -65,6 +126,7 @@ def load_home_config(path: Path | None = None) -> HomeConfig:
             f"Config not found at {cfg_path}. Copy config/homes.example.yaml to "
             f"{DEFAULT_CONFIG_PATH} or set HOME_MEDIA_CONFIG."
         )
+    validate_private_file(cfg_path, label="Home Media configuration")
     raw = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
         raise ConfigError("Config root must be a mapping")

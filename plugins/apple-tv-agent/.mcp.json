@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "apple-tv-agent": {
+      "command": "apple-tv-agent-mcp",
+      "args": []
+    }
+  }
+}

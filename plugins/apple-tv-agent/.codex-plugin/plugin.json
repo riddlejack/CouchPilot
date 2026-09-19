@@ -1,0 +1,23 @@
+{
+  "name": "apple-tv-agent",
+  "version": "0.1.0",
+  "description": "Control and observe configured Apple TVs through a LAN-local bridge.",
+  "author": {
+    "name": "Jack Riddle"
+  },
+  "license": "MIT",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Apple TV Agent",
+    "shortDescription": "Operate Apple TV through a local bridge.",
+    "longDescription": "Discover, control, and optionally observe configured Apple TVs through a local, agent-neutral bridge. Pairing material stays on the bridge.",
+    "developerName": "Jack Riddle",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Read", "Write"],
+    "defaultPrompt": [
+      "Show me the configured Apple TVs and their current status.",
+      "Prepare the requested Apple TV state and verify the result."
+    ]
+  },
+  "mcpServers": "./.mcp.json"
+}

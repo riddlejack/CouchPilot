@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import json
 import re
 from datetime import datetime
@@ -10,7 +9,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
-from home_media.config import ensure_private_dir, ensure_private_file
+from home_media.config import validate_private_file, write_private_text
 from home_media.models import utcnow
 
 _PUNCT_RE = re.compile(r"[^\w\s]", re.UNICODE)
@@ -76,6 +75,7 @@ class VerifiedTargetCache:
     def _load(self) -> None:
         if self.path is None or not self.path.exists():
             return
+        validate_private_file(self.path, label="verified content target cache")
         raw = json.loads(self.path.read_text(encoding="utf-8"))
         if not isinstance(raw, list):
             return
@@ -91,9 +91,5 @@ class VerifiedTargetCache:
     def _save(self) -> None:
         if self.path is None:
             return
-        ensure_private_dir(self.path.parent)
         items = [t.model_dump(mode="json") for t in self._by_content_id.values()]
-        ensure_private_file(self.path)
-        self.path.write_text(json.dumps(items, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        with contextlib.suppress(OSError):
-            self.path.chmod(0o600)
+        write_private_text(self.path, json.dumps(items, indent=2, sort_keys=True) + "\n")

@@ -1,0 +1,38 @@
+/*
+Home Media Siri bridge.
+
+The private configuration below is an import question. The source and generated
+unsigned artifact contain placeholders only; real values are entered when the
+signed Shortcut is imported into the owner's Shortcuts library.
+*/
+
+#define color blue
+#define glyph appleTV
+
+#include 'actions/calendar'
+#include 'actions/web'
+
+#question brokerToken "Paste the Home Media broker token" "PASTE-THE-PRIVATE-BROKER-TOKEN"
+
+// The build script can replace this generic LAN endpoint with --broker-url or
+// HOME_MEDIA_BROKER_URL. Only the bearer token is private import-time
+// configuration.
+const token = text(brokerToken)
+
+const utterance = prompt("What should I do, and in which room?")
+const now = currentDate()
+const timestamp = formatDate(now, "Custom", "yyyyMMdd-HHmmss-SSS")
+const nonce = randomNumber(100000, 999999)
+
+const response = jsonRequest("http://home-media.local:8744/v1/intent", "POST", {
+    "schema_version": 1,
+    "utterance": "{utterance}",
+    "idempotency_key": "ios-{timestamp}-{nonce}"
+}, {
+    "Authorization": "Bearer {token}",
+    "Content-Type": "application/json"
+})
+
+const responseDictionary = getDictionary(response)
+const spokenResponse = getValue(responseDictionary, "spoken_response")
+mustOutput("{spokenResponse}", "{spokenResponse}")

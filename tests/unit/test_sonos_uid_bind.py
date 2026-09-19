@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from home_media.adapters.fake import FakeSonosAdapter
+from home_media.adapters.sonos import SonosAdapter
 from home_media.config import lounge_seed_config
+from home_media.errors import NetworkError
 from home_media.models import DeviceKind, DiscoveredEndpoint
 from home_media.registry import RoomRegistry
 
@@ -58,3 +60,37 @@ def test_fake_sonos_sub_not_preferred_room_target() -> None:
     endpoints = asyncio.run(fake.discover())
     sub = next(e for e in endpoints if e.raw.get("is_sub"))
     assert sub.device_id != "sonos-lounge-beam"
+
+
+def test_configured_sonos_uid_never_falls_back_to_friendly_name() -> None:
+    reg = RoomRegistry(lounge_seed_config())
+    adapter = SonosAdapter(reg)
+    refs = [d for d in reg.config.devices if d.adapter == "sonos"]
+    assert (
+        adapter._match_audio_device_id(  # noqa: SLF001
+            "RINCON_WRONG", "Lounge", refs
+        )
+        is None
+    )
+    assert (
+        adapter._match_audio_device_id(  # noqa: SLF001
+            "RINCON_00000000000101400", "Renamed Lounge", refs
+        )
+        == "sonos-lounge-beam"
+    )
+
+
+def test_cached_sonos_mapping_is_revalidated_by_uid() -> None:
+    from types import SimpleNamespace
+
+    reg = RoomRegistry(lounge_seed_config())
+    adapter = SonosAdapter(reg)
+    wrong = SimpleNamespace(uid="RINCON_WRONG")
+    adapter._by_device_id["sonos-lounge-beam"] = wrong  # type: ignore[assignment]  # noqa: SLF001
+    try:
+        adapter._validate_stable_uid(wrong, "sonos-lounge-beam")  # type: ignore[arg-type]  # noqa: SLF001
+    except NetworkError:
+        pass
+    else:
+        raise AssertionError("wrong cached Sonos UID was accepted")
+    assert "sonos-lounge-beam" not in adapter._by_device_id  # noqa: SLF001

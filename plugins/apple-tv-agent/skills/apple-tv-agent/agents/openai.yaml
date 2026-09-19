@@ -1,0 +1,4 @@
+interface:
+  display_name: "Apple TV Agent"
+  short_description: "Operate Apple TV through the local bridge"
+  default_prompt: "Use $apple-tv-agent to prepare the requested Apple TV state and verify the result."

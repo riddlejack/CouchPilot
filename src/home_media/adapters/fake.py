@@ -196,7 +196,7 @@ class FakeAppleTVAdapter:
             data["keyboard_text"] = ""
         if app_id == "com.netflix.Netflix":
             current = self.provider_state.get(device_id)
-            if current is None or current == "unknown":
+            if current is None or current in {"unknown", "apple_home"}:
                 # Cold launch defaults to profile picker; tests may pre-inject home/playing.
                 self.provider_state[device_id] = "profile_picker"
         return await self.get_status(device_id)

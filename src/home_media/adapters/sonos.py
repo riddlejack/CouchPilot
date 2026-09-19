@@ -287,7 +287,7 @@ class SonosAdapter:
         player_name: str,
         audio_refs: list[DeviceRef],
     ) -> str | None:
-        """Bind by vendor_stable_id first, then unique exact player_name/alias."""
+        """Bind by stable UID; names are only for legacy refs without a UID."""
         for ref in audio_refs:
             if ref.vendor_stable_id and ref.vendor_stable_id == uid:
                 return ref.id
@@ -298,6 +298,11 @@ class SonosAdapter:
 
         matches: list[str] = []
         for ref in audio_refs:
+            # Once a stable vendor identity is configured, a friendly name must
+            # never override a mismatch or absence.  This prevents a renamed or
+            # replacement speaker from inheriting another room's target.
+            if ref.vendor_stable_id:
+                continue
             room = self._registry.room(ref.room_key)
             candidates = {_norm(room.display_name), *(_norm(a) for a in ref.aliases)}
             if needle in candidates:
@@ -348,8 +353,8 @@ class SonosAdapter:
                     ref = None
                 if ref and ref.vendor_stable_id and candidate.uid != ref.vendor_stable_id:
                     raise NetworkError(
-                        f"Sonos at {endpoint.address} has uid {candidate.uid}, "
-                        f"expected {ref.vendor_stable_id}; refusing IP-only bind",
+                        "Sonos endpoint stable identity differs from configured target; "
+                        "refusing IP-only bind",
                         retryable=True,
                     )
                 speaker = candidate
@@ -361,7 +366,22 @@ class SonosAdapter:
                 retryable=False,
             )
 
+        self._validate_stable_uid(speaker, device_id)
         return await self._call(self._ensure_room_target, speaker, device_id)
+
+    def _validate_stable_uid(self, speaker: SoCo, device_id: str) -> None:
+        """Revalidate cached discoveries before every room-target operation."""
+        try:
+            ref = self._registry.device(device_id)
+        except Exception:  # noqa: BLE001 - unknown discovery-only device
+            return
+        expected = ref.vendor_stable_id
+        if expected and speaker.uid != expected:
+            self._by_device_id.pop(device_id, None)
+            raise NetworkError(
+                "Cached Sonos stable identity differs from configured target; refusing control",
+                retryable=True,
+            )
 
     def _ensure_room_target(self, speaker: SoCo, device_id: str) -> SoCo:
         """Refuse accidental Sub targets; prefer zone coordinator when needed."""

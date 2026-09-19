@@ -19,6 +19,8 @@ class TerminalStatus(StrEnum):
     KEYBOARD_NOT_FOCUSED = "keyboard_not_focused"
     QUERY_MISMATCH = "query_mismatch"
     TITLE_DETAIL_UNVERIFIED = "title_detail_unverified"
+    TITLE_OPEN_VERIFIED = "title_open_verified"
+    PLAYBACK_PAUSED_VERIFIED = "playback_paused_verified"
     HANDOFF = "handoff"
     FAILED = "failed"
     UNSUPPORTED_GOAL = "unsupported_goal"
@@ -74,6 +76,7 @@ class PrepareContentResult(BaseModel):
     physical_tv_state_known: bool = False
     idempotency_key: str | None = None
     idempotency_notes: str | None = None
+    total_latency_ms: int | None = None
     extra: dict[str, Any] = Field(default_factory=dict)
 
 

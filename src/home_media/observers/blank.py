@@ -9,10 +9,16 @@ from __future__ import annotations
 import struct
 import zlib
 from dataclasses import dataclass
+from io import BytesIO
 
 PNG_SIG = b"\x89PNG\r\n\x1a\n"
 # Mean luminance at or below this (0–255) → blank_or_protected.
 DEFAULT_BLANK_MEAN = 8.0
+# A dark frame with controls or titles is still observable. Require at least
+# this fraction of sampled pixels outside the screenshot-toast corner to be
+# visibly bright before overriding the mean-only blank result.
+VISIBLE_LUMA_THRESHOLD = 24.0
+MIN_VISIBLE_PIXEL_FRACTION = 0.002
 # Sample every Nth pixel for speed on large captures.
 DEFAULT_STRIDE = 4
 
@@ -98,6 +104,35 @@ def _defilter_scanline(
         else:
             raise ValueError(f"unsupported PNG filter {filter_type}")
     return bytes(out)
+
+
+def _normalize_with_pillow_to_8bit_rgba(png_bytes: bytes) -> bytes | None:
+    try:
+        from PIL import Image
+    except Exception:  # noqa: BLE001 -- optional image backend
+        return None
+    try:
+        with Image.open(BytesIO(png_bytes)) as image:
+            if image.width <= 0 or image.height <= 0:
+                return None
+            rgba = image.convert("RGBA")
+            output = BytesIO()
+            rgba.save(output, format="PNG")
+            return output.getvalue()
+    except Exception:  # noqa: BLE001 -- malformed images stay unobservable
+        return None
+
+
+def normalize_png_for_vision(png_bytes: bytes) -> bytes | None:
+    """Return a Vision-safe 8-bit RGBA PNG without changing its dimensions."""
+    if not is_png(png_bytes):
+        return None
+    if _decode_rgba_png(png_bytes) is not None:
+        return png_bytes
+    converted = _normalize_with_pillow_to_8bit_rgba(png_bytes)
+    if converted is not None and _decode_rgba_png(converted) is not None:
+        return converted
+    return None
 
 
 def _decode_rgba_png(data: bytes) -> tuple[int, int, bytes] | None:
@@ -197,12 +232,22 @@ def assess_blank_or_protected(
         stride = 1
     total = 0.0
     count = 0
+    visible_count = 0
     pixel_count = width * height
     for idx in range(0, pixel_count, stride):
+        x = idx % width
+        y = idx // width
+        # DVT adds a transient screenshot toast in this corner. It must not
+        # make an otherwise DRM-black frame look observable.
+        if x >= round(width * 0.60) and y <= round(height * 0.18):
+            continue
         base = idx * 4
         r, g, b = rgba[base], rgba[base + 1], rgba[base + 2]
         # Rec. 601 luminance
-        total += 0.299 * r + 0.587 * g + 0.114 * b
+        luminance = 0.299 * r + 0.587 * g + 0.114 * b
+        total += luminance
+        if luminance >= VISIBLE_LUMA_THRESHOLD:
+            visible_count += 1
         count += 1
     if count == 0:
         return BlankAssessment(
@@ -213,7 +258,8 @@ def assess_blank_or_protected(
             reason="zero_pixels",
         )
     mean = total / count
-    blank = mean <= mean_threshold
+    visible_fraction = visible_count / count
+    blank = mean <= mean_threshold and visible_fraction < MIN_VISIBLE_PIXEL_FRACTION
     return BlankAssessment(
         blank_or_protected=blank,
         mean_luminance=mean,
@@ -230,8 +276,6 @@ def _assess_with_pillow(
     stride: int,
 ) -> BlankAssessment | None:
     try:
-        from io import BytesIO
-
         from PIL import Image
     except Exception:  # noqa: BLE001 — optional dependency
         return None
@@ -260,15 +304,59 @@ def _assess_with_pillow(
             reason="zero_pixels",
         )
     step = max(1, stride)
-    sample = data[::step]
+    sample = [
+        data[idx]
+        for idx in range(0, len(data), step)
+        if not (
+            idx % width >= round(width * 0.60)
+            and idx // width <= round(height * 0.18)
+        )
+    ]
+    if not sample:
+        return BlankAssessment(
+            blank_or_protected=True,
+            mean_luminance=None,
+            width=width,
+            height=height,
+            reason="zero_pixels",
+        )
     mean = float(sum(sample)) / float(len(sample))
-    blank = mean <= mean_threshold
+    visible_fraction = (
+        sum(value >= VISIBLE_LUMA_THRESHOLD for value in sample) / len(sample)
+    )
+    blank = mean <= mean_threshold and visible_fraction < MIN_VISIBLE_PIXEL_FRACTION
     return BlankAssessment(
         blank_or_protected=blank,
         mean_luminance=mean,
         width=width,
         height=height,
         reason="near_black_frame" if blank else "visible_content",
+    )
+
+
+def synthesize_png16_rgb(width: int, height: int, rgb: tuple[int, int, int]) -> bytes:
+    """Write a minimal 16-bit RGB PNG for live-format regression tests."""
+    if width <= 0 or height <= 0:
+        raise ValueError("width and height must be positive")
+    r16, g16, b16 = (max(0, min(65535, int(value))) for value in rgb)
+    row = b"".join(struct.pack(">HHH", r16, g16, b16) for _ in range(width))
+    raw = b"".join(b"\x00" + row for _ in range(height))
+    compressed = zlib.compress(raw, level=9)
+
+    def chunk(chunk_type: bytes, payload: bytes) -> bytes:
+        return (
+            struct.pack(">I", len(payload))
+            + chunk_type
+            + payload
+            + struct.pack(">I", zlib.crc32(chunk_type + payload) & 0xFFFFFFFF)
+        )
+
+    ihdr = struct.pack(">IIBBBBB", width, height, 16, 2, 0, 0, 0)
+    return (
+        PNG_SIG
+        + chunk(b"IHDR", ihdr)
+        + chunk(b"IDAT", compressed)
+        + chunk(b"IEND", b"")
     )
 
 

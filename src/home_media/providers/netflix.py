@@ -116,6 +116,7 @@ class NetflixAdapter:
                 name="launch_app",
                 allowed_from=[
                     ProviderState.UNKNOWN,
+                    ProviderState.APPLE_HOME,
                     ProviderState.HOME,
                     ProviderState.ERROR_OR_MODAL,
                 ],
