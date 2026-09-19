@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -10,7 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from home_media.config import ensure_private_dir, ensure_private_file
+from home_media.config import validate_private_file, write_private_text
 from home_media.errors import SafetyBlockedError
 from home_media.models import utcnow
 from home_media.providers.base import ProviderState
@@ -131,6 +130,7 @@ class RecipeStore:
     def _load(self) -> None:
         if self.path is None or not self.path.exists():
             return
+        validate_private_file(self.path, label="provider recipe store")
         raw = json.loads(self.path.read_text(encoding="utf-8"))
         if not isinstance(raw, list):
             return
@@ -143,9 +143,5 @@ class RecipeStore:
     def _save(self) -> None:
         if self.path is None:
             return
-        ensure_private_dir(self.path.parent)
         items = [r.model_dump(mode="json") for r in self._recipes.values()]
-        ensure_private_file(self.path)
-        self.path.write_text(json.dumps(items, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        with contextlib.suppress(OSError):
-            self.path.chmod(0o600)
+        write_private_text(self.path, json.dumps(items, indent=2, sort_keys=True) + "\n")

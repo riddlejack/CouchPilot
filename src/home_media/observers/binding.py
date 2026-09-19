@@ -16,7 +16,12 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from home_media.config import DEFAULT_CONFIG_DIR, ensure_private_dir, ensure_private_file
+from home_media.config import (
+    DEFAULT_CONFIG_DIR,
+    ensure_private_dir,
+    validate_private_file,
+    write_private_text,
+)
 from home_media.errors import ConfigError, UnsupportedError
 
 DEFAULT_BINDING_PATH = DEFAULT_CONFIG_DIR / "observer_bindings.json"
@@ -58,6 +63,7 @@ class ObserverBindingStore(BaseModel):
         store_path = path or _path_from_env()
         if not store_path.exists():
             return cls.empty()
+        validate_private_file(store_path, label="observer binding store")
         raw = json.loads(store_path.read_text(encoding="utf-8"))
         if not isinstance(raw, dict):
             raise ConfigError("observer_bindings.json root must be a mapping")
@@ -68,9 +74,7 @@ class ObserverBindingStore(BaseModel):
         ensure_private_dir(store_path.parent)
         payload = self.model_dump(mode="json")
         text = json.dumps(payload, indent=2, sort_keys=True) + "\n"
-        store_path.write_text(text, encoding="utf-8")
-        ensure_private_file(store_path)
-        return store_path
+        return write_private_text(store_path, text)
 
     def validate_unique_udids(self) -> None:
         seen: dict[str, str] = {}

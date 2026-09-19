@@ -18,6 +18,7 @@ from importlib import resources
 from pathlib import Path
 
 from home_media.errors import UnsupportedError
+from home_media.observers.blank import normalize_png_for_vision
 from home_media.observers.ocr_types import OcrDocument, OcrToken
 
 _HELPER_SOURCE_NAME = "vision_ocr.swift"
@@ -124,9 +125,10 @@ def resolve_helper_binary(*, compile_if_needed: bool = True) -> Path:
 async def run_vision_ocr(png_bytes: bytes, *, timeout_s: float = 20.0) -> OcrDocument:
     """Invoke Vision OCR helper on PNG bytes; returns portable token geometry."""
     binary = await asyncio.to_thread(resolve_helper_binary, compile_if_needed=True)
+    normalized = normalize_png_for_vision(png_bytes) or png_bytes
     with tempfile.TemporaryDirectory(prefix="home-media-ocr-img-") as tmp:
         png_path = Path(tmp) / "frame.png"
-        png_path.write_bytes(png_bytes)
+        png_path.write_bytes(normalized)
         proc = await asyncio.create_subprocess_exec(
             str(binary),
             str(png_path),

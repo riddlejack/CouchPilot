@@ -5,7 +5,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Any, TypeVar
 
@@ -56,6 +57,22 @@ class AppleTVConnectionManager:
     _connections: dict[str, _ManagedConnection] = field(default_factory=dict)
     _locks: dict[str, asyncio.Lock] = field(default_factory=dict)
     _closed: bool = False
+    _active_operations: int = 0
+    _activity_condition: asyncio.Condition = field(default_factory=asyncio.Condition)
+
+    @asynccontextmanager
+    async def _activity(self) -> AsyncIterator[None]:
+        async with self._activity_condition:
+            if self._closed:
+                raise NetworkError("Connection manager is closed", retryable=False)
+            self._active_operations += 1
+        try:
+            yield
+        finally:
+            async with self._activity_condition:
+                self._active_operations -= 1
+                if self._active_operations == 0:
+                    self._activity_condition.notify_all()
 
     def _lock_for(self, device_id: str) -> asyncio.Lock:
         if device_id not in self._locks:
@@ -66,6 +83,15 @@ class AppleTVConnectionManager:
         return max(1, int(round(self.scan_timeout)))
 
     async def resolve_config(
+        self,
+        device_id: str,
+        *,
+        force: bool = False,
+    ) -> BaseConfig:
+        async with self._activity():
+            return await self._resolve_config(device_id, force=force)
+
+    async def _resolve_config(
         self,
         device_id: str,
         *,
@@ -109,9 +135,11 @@ class AppleTVConnectionManager:
             return conf
 
     async def get_connection(self, device_id: str, conf: BaseConfig) -> AppleTV:
+        async with self._activity():
+            return await self._get_connection(device_id, conf)
+
+    async def _get_connection(self, device_id: str, conf: BaseConfig) -> AppleTV:
         async with self._lock_for(device_id):
-            if self._closed:
-                raise NetworkError("Connection manager is closed", retryable=False)
             existing = self._connections.get(device_id)
             if existing is not None:
                 self.stats.reuses += 1
@@ -154,23 +182,43 @@ class AppleTVConnectionManager:
         *,
         require_credentials: Callable[[BaseConfig], bool] | None = None,
     ) -> T:
-        conf = await self.resolve_config(device_id)
-        if require_credentials is not None and not require_credentials(conf):
-            raise AuthRequiredError(device_id, protocol="companion")
-        atv = await self.get_connection(device_id, conf)
-        try:
-            return await op(atv, conf)
-        except (AuthRequiredError, StaleEndpointError):
-            await self.invalidate(device_id)
-            raise
-        except NetworkError:
-            await self.invalidate(device_id)
-            raise
+        async with self._activity():
+            conf = await self._resolve_config(device_id)
+            if require_credentials is not None and not require_credentials(conf):
+                raise AuthRequiredError(device_id, protocol="companion")
+            atv = await self._get_connection(device_id, conf)
+            try:
+                return await op(atv, conf)
+            except (AuthRequiredError, StaleEndpointError):
+                await self.invalidate(device_id)
+                raise
+            except NetworkError:
+                await self.invalidate(device_id)
+                raise
 
     async def aclose(self) -> None:
-        self._closed = True
+        async with self._activity_condition:
+            if self._closed and self._active_operations == 0:
+                return
+            self._closed = True
+            while self._active_operations:
+                await self._activity_condition.wait()
         for device_id in list(self._connections):
             await self.invalidate(device_id)
+
+    def health_snapshot(self) -> dict[str, int | bool | str]:
+        """Safe aggregate counters for hub health; device keys stay private."""
+        return {
+            "status": "stopped" if self._closed else "healthy",
+            "connection_manager_started": True,
+            "cached_connections": len(self._connections),
+            "cached_configs": len(self._configs),
+            "active_operations": self._active_operations,
+            "scans": self.stats.scans,
+            "connects": self.stats.connects,
+            "reuses": self.stats.reuses,
+            "invalidations": self.stats.invalidations,
+        }
 
     @staticmethod
     async def _close_atv(atv: AppleTV) -> None:

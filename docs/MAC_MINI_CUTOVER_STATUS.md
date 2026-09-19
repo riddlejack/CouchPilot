@@ -1,6 +1,11 @@
 # Mac mini cutover status
 
-Updated: 2026-07-20 20:30 America/Chicago
+Updated: 2026-07-20 21:10 America/Chicago
+
+> Historical checkpoint: this document records the state before Living Room's Mac
+> mini developer pairing, live observer, broker, and Netflix resume gates were
+> completed on 2026-07-21. For current truth, use `CODEX_HANDOFF_CURRENT.md`,
+> `docs/SIRI_BROKER_RUNBOOK.md`, and `docs/LIVING_ROOM_NETFLIX_LIVE_GATE.md`.
 
 ## Verdict
 
@@ -30,8 +35,8 @@ this host. Mutations remain disabled.
   pymobiledevice3 remote-pair record.
 - Mac mini `mutations_enabled` is explicitly `false`; the source-machine copy is
   unchanged and remains the rollback runtime.
-- Mac mini code-only gate passes: 108 tests, Ruff, mypy, source build, and wheel
-  build.
+- Initial Mac mini code-only gate passed: 108 tests, Ruff, mypy, source build,
+  and wheel build.
 - Mac mini read-only live gate passes:
   - six configured rooms resolve exactly;
   - five Apple TVs rediscovered;
@@ -42,6 +47,42 @@ this host. Mutations remain disabled.
 
 Private command outputs are retained under the Mac mini Home Media configuration
 directory, not in Git.
+
+## Pre-gate runtime work completed
+
+The `codex/mac-mini-runtime` branch now contains the safe work that did not
+require a television mutation:
+
+- all service-owned mutation paths, including content preparation and pairing,
+  obey the global mutation kill switch;
+- failed content mutations retain an ambiguity tombstone so the same
+  idempotency key cannot dispatch again;
+- exact Sonos UID bindings cannot fall back to friendly names;
+- private runtime inputs fail closed on unsafe type, owner, or permission mode,
+  and private writes use mode-0600 atomic replacement;
+- the screenshot provider result is checked against the requested room, stable
+  Apple TV identity, and confirmed observer fingerprint before evidence is
+  saved or classified;
+- the screenshot backend has a persistent, exact-UDID worker with typed
+  `capture`/`shutdown` messages, identity checking, safe errors, and supervised
+  shutdown; no worker is started by a health check;
+- MCP owns one process-scoped `HomeMediaHub` with request draining, deliberate
+  configuration reload, graceful shutdown, and redacted health reporting;
+- `home-media-shortcut` accepts one bounded typed JSON request on stdin and
+  exposes only `prepare_content` with the `search_ready` goal; a private durable
+  ledger prevents redispatch of completed, in-flight, or ambiguous request IDs
+  across one-process-per-SSH invocations;
+- default MCP no longer exposes pairing.
+
+The updated code-only gate passes 152 tests, Ruff, mypy across 46 source files,
+and source/wheel build. A real-config, non-network health probe reports six
+rooms, mutations disabled, one configured observer binding, no screenshot
+worker process, and no warnings. This proves startup/configuration health, not
+device reachability or screenshot readiness.
+
+The persistent worker and Shortcut wrapper remain code-verified only. No
+screenshot capture, pairing, Netflix navigation, SSH forced-command setup,
+LaunchAgent installation, or listener was attempted in this phase.
 
 ## Current blocker: screenshot host pairing
 
@@ -81,16 +122,10 @@ or compensate with blind remote presses.
 
 ## Work that can continue before the human gate
 
-- establish a `codex/mac-mini-runtime` branch;
-- add a tested persistent capture-worker design with fail-closed exact-device
-  binding and graceful shutdown;
-- add stage timing/health instrumentation;
-- implement the restricted typed-JSON SSH wrapper using fakes;
-- design the singleton local hub API without binding it to the LAN;
-- update install/service documentation and tests;
-- investigate the current Mac mini Codex runtime and ensure `~/.local/bin` is in
-  the execution PATH without weakening system security.
+The listed branch, worker, timing/health, singleton hub, typed-JSON wrapper,
+documentation, and PATH checks are complete. The remaining pre-gate work is
+review/commit/push of that coherent branch. Live latency targets cannot be
+measured until the host-specific observer pairing is repaired.
 
 Do not install a LaunchAgent, open a listener, enable live mutations, or run a
 Netflix navigation sequence until the relevant explicit gate.
-

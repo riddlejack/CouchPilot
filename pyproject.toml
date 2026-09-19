@@ -3,6 +3,8 @@ name = "home-media"
 version = "0.1.0"
 description = "Local-first room-aware control for Apple TV, physical TVs, and Sonos"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies = [
   "pyatv>=0.18,<0.19",
@@ -12,6 +14,7 @@ dependencies = [
   "pydantic>=2.10",
   "pydantic-settings>=2.7",
   "pyyaml>=6.0",
+  "pillow>=12,<13",
   "soco>=0.30",
   "androidtvremote2>=0.3.1",
   "httpx>=0.28",
@@ -34,6 +37,10 @@ screenshot = [
 [project.scripts]
 home-media = "home_media.cli:app"
 home-media-mcp = "home_media.mcp_server:main"
+home-media-shortcut = "home_media.shortcut:main"
+home-media-broker = "home_media.broker:main"
+apple-tv-agent = "home_media.agent_cli:main"
+apple-tv-agent-mcp = "home_media.agent_mcp:main"
 
 [build-system]
 requires = ["uv_build>=0.11.8,<0.12.0"]

@@ -174,6 +174,29 @@ not give dictated text to a shell, expose the general Codex process, or allow
 raw remote batches. The LLM/Siri layer parses intent; the deterministic service
 validates and executes it.
 
+### Implemented pre-gate runtime surfaces
+
+The `codex/mac-mini-runtime` branch provides these building blocks without
+installing a service or opening a listener:
+
+- `home-media --json health` starts the configuration locally, reports redacted
+  process health, and closes without probing a device;
+- MCP owns one `HomeMediaHub` per stdio server process and drains active requests
+  during deliberate reload or shutdown;
+- screenshot capture defaults to a persistent exact-UDID subprocess worker;
+  set `HOME_MEDIA_CAPTURE_MODE=oneshot` only as an explicit compatibility
+  fallback;
+- `home-media-shortcut` accepts one versioned JSON object on stdin and permits
+  only semantic `prepare_content` with goal `search_ready`; it records request
+  fingerprints and terminal/ambiguous outcomes in a private mode-0600 ledger so
+  one-process-per-SSH retries cannot repeat a mutation.
+
+Do not install `home-media-shortcut` as an SSH forced command before live
+cutover. Its boundary and cross-process idempotency are code-verified, but the
+SSH account/forced-command and iPhone Shortcut remain later explicit setup
+work. A future supervised local transport may replace the ledger without
+expanding the typed operation surface.
+
 ## Rollback
 
 - Do not delete or overwrite the source-machine checkout or private state during
@@ -195,4 +218,3 @@ Deployment is complete only when all are true:
 - one approved Netflix `search_ready` gate passes with exact query verification;
 - the service survives a Mac mini restart and reports healthy;
 - rollback to the source machine remains possible until the restart proof.
-

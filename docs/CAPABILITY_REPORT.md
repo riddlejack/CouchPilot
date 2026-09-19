@@ -2,19 +2,20 @@
 
 Evidence labels: automated | live_verified | degraded | untested | unsupported
 
-Generated during implementation on 2026-07-20. Update after each live gate.
+Updated after the Living Room resume gate on 2026-07-21.
 
 ## Living Room (current live room)
 
 | Capability | Target | Status | Notes |
 |---|---|---|---|
 | Companion pairing | Apple TV | live_verified | Stored outside repo |
-| Exact room screenshot | Apple TV | live_verified | Bound fingerprint `REDACTED_PRIVATE_BINDING_FINGERPRINT`; no `devices[0]` fallback |
+| Exact room screenshot | Apple TV | live_verified | Current Mac mini observer fingerprint `ed6262eec5d9`; no `devices[0]` fallback |
 | Netflix picker/Home/Search classification | Apple TV | live_verified | Vision OCR against recorded live frames; deterministic anchors |
 | Netflix `search_ready` | Apple TV | **live_verified** | Apple Home → launch → replace prior query → exact readback; no result Select |
 | Apps open / transport | Apple TV | live_verified / partially untested | Netflix launch proven; broader transport matrix pending |
-| Result selection / title detail | Netflix | untested | Intentionally forbidden in current semantic goal |
-| Exact resume progress | Netflix | unsupported as a verified universal path | Next provider milestone requires title + playback evidence |
+| Result selection / title detail | Netflix | **live_verified** | Fast vision named and selected the exact visible focused title on a fresh frame |
+| Resume then pause | Netflix | **live_verified** | Broker returned `playback_paused_verified` in 35.3 s; explicit Pause was followed by an independent `idle` status five seconds later |
+| Exact provider watch-history position | Netflix | unsupported as a direct API | Provider owns progress; controller verifies resumed playback rather than reading the saved offset |
 | Sonos volume | Sonos | live_verified | Existing room binding reports volume R/W |
 | Physical TV state | — | not configured | Apple TV wake does not prove display power |
 
@@ -32,7 +33,7 @@ Live proof: `docs/LIVING_ROOM_NETFLIX_LIVE_GATE.md`.
 | Apps list/open | Apple TV | untested | |
 | Deep link open | Apple TV | automated (fakes) / untested live | https + allowlisted `nflx://` title links; Gate 1 matrix pending |
 | prepare_content search_ready | Netflix | automated / untested in Theater | Living Room is the verified reference room |
-| Exact resume progress | Provider | unsupported as universal API | Honest outcome levels implemented |
+| Resume then pause | Provider | Netflix automated / other providers untested | Honest terminal outcomes implemented |
 | Raw AirPlay `play_url` | Apple TV | unsupported | tvOS 26 regression (#2821) |
 | Exact volume | Sonos Beam | live_verified read / untested set | Read level=73; set awaits Human Gate C |
 | TV input | Sony | degraded/untested | Key-based best effort |

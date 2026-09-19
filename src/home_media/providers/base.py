@@ -12,6 +12,7 @@ from home_media.models import PowerState
 
 class ProviderState(StrEnum):
     UNKNOWN = "unknown"
+    APPLE_HOME = "apple_home"
     PROFILE_PICKER = "profile_picker"
     HOME = "home"
     SEARCH_NAV = "search_nav"

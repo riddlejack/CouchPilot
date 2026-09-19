@@ -6,12 +6,17 @@ Live capture uses an optional subprocess-boundary pymobiledevice3 stack
 
 from __future__ import annotations
 
+import hashlib
+import io
 from collections.abc import Awaitable, Callable
 from typing import Protocol, runtime_checkable
 
 from pydantic import BaseModel, Field
 
 from home_media.errors import ConfigError, UnsupportedError
+
+ANALYSIS_FRAME_MAX_WIDTH = 1280
+STABILITY_FRAME_WIDTH = 256
 
 
 class CaptureMetadata(BaseModel):
@@ -24,6 +29,8 @@ class CaptureMetadata(BaseModel):
     mean_luminance: float | None = None
     blank_reason: str | None = None
     capture_backend: str | None = None
+    worker_reused: bool | None = None
+    worker_startup_ms: int | None = None
     argv_has_udid: bool | None = None
     argv_has_userspace: bool | None = None
     captured_at: str | None = None
@@ -58,8 +65,83 @@ class ScreenshotResult(BaseModel):
             "mean_luminance": meta.get("mean_luminance"),
             "blank_reason": meta.get("blank_reason"),
             "capture_backend": meta.get("capture_backend"),
+            "worker_reused": meta.get("worker_reused"),
+            "worker_startup_ms": meta.get("worker_startup_ms"),
             "captured_at": meta.get("captured_at"),
         }
+
+
+def prepare_screenshot_for_analysis(
+    result: ScreenshotResult,
+    *,
+    max_width: int = ANALYSIS_FRAME_MAX_WIDTH,
+) -> ScreenshotResult:
+    """Return a smaller in-memory copy for OCR while preserving raw capture evidence."""
+    if max_width < 320:
+        raise ValueError("analysis frame width must be at least 320 pixels")
+    if not result.png_bytes:
+        return result
+
+    from PIL import Image
+
+    with Image.open(io.BytesIO(result.png_bytes)) as image:
+        image.load()
+        if image.width <= max_width:
+            return result
+        height = max(1, round(image.height * max_width / image.width))
+        resized = image.resize((max_width, height), Image.Resampling.LANCZOS)
+        output = io.BytesIO()
+        resized.save(output, format="PNG", compress_level=1)
+    png = output.getvalue()
+    metadata = result.metadata.model_copy(
+        update={
+            "sha256": hashlib.sha256(png).hexdigest(),
+            "width": max_width,
+            "height": height,
+        }
+    )
+    return result.model_copy(update={"png_bytes": png, "metadata": metadata})
+
+
+def ui_stability_fingerprint(png_bytes: bytes | None) -> str | None:
+    """Hash stable tvOS UI while ignoring Xcode's screenshot notification.
+
+    Every DVT capture can briefly add a ``Screenshot Taken`` toast in the
+    upper-right corner of the *next* frame. Raw byte hashes therefore make an
+    unchanged focused control look animated and force another model call. The
+    toast region never contains a Netflix focus target in the supported flows,
+    so mask only that corner and hash a small RGB raster. Changes elsewhere,
+    including focus borders and CTA labels, still change the fingerprint.
+    """
+    if not png_bytes:
+        return None
+
+    from PIL import Image, ImageDraw
+
+    try:
+        with Image.open(io.BytesIO(png_bytes)) as image:
+            image.load()
+            rgb = image.convert("RGB")
+            height = max(1, round(rgb.height * STABILITY_FRAME_WIDTH / rgb.width))
+            resized = rgb.resize(
+                (STABILITY_FRAME_WIDTH, height),
+                Image.Resampling.BILINEAR,
+            )
+            draw = ImageDraw.Draw(resized)
+            draw.rectangle(
+                (
+                    round(resized.width * 0.60),
+                    0,
+                    resized.width,
+                    round(resized.height * 0.18),
+                ),
+                fill=(0, 0, 0),
+            )
+            return hashlib.sha256(resized.tobytes()).hexdigest()
+    except (OSError, ValueError):
+        # A malformed test/adapter payload must never break the control loop;
+        # callers retain the capture's raw SHA-256 fallback.
+        return None
 
 
 @runtime_checkable

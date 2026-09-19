@@ -138,10 +138,14 @@ class StaleEndpointError(HomeMediaError):
 
 
 class MutationsDisabledError(HomeMediaError):
-    def __init__(self) -> None:
+    def __init__(self, *, intent: str | None = None) -> None:
+        message = "Mutations are disabled by kill switch"
+        if intent:
+            message = f"{message}; refusing {intent}"
         super().__init__(
-            "Mutations are disabled by kill switch",
+            message,
             code=ErrorCode.MUTATIONS_DISABLED,
+            details={"intent": intent} if intent else None,
         )
 
 

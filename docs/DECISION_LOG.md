@@ -25,7 +25,7 @@ ignored runtime inventory rather than Git:
 
 Also confirmed: Theater TV + Study Android TV Remote v2 / Cast; Sonos RINCON
 ads including bonded Subs; naming collisions (`Theater` ATV vs `Theater (2)` Beam).
-No Home Assistant mDNS/`8123` listener found on `home-media` or gateway.
+No Home Assistant mDNS/`8123` listener found on the bridge host or gateway.
 Raw TCP probes to known ports often appear filtered; Bonjour/`atvremote scan`
 remain the authoritative passive signals.
 

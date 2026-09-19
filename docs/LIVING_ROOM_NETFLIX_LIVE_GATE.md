@@ -1,19 +1,35 @@
-# Living Room Netflix search-ready live gate
+# Living Room Netflix live gates
 
-Date: 2026-07-20 (America/Chicago)
+Updated: 2026-07-21 (America/Chicago)
 
 ## Verdict
 
-**LIVE VERIFIED** for the bounded `search_ready` outcome on Living Room.
+**LIVE VERIFIED** for bounded `search_ready`, exact-title selection, and
+resume-then-pause outcomes on Living Room.
 
 One semantic command can start from the Apple TV Home screen, launch Netflix,
 classify the restored Netflix screen from pixels, replace a prior query, verify
 the requested title through the real Apple TV keyboard channel, and stop at
 results without selecting a title or claiming playback.
 
-This is not yet title selection or resume.
+The original proof below covers search-ready. A later broker acceptance run also
+proved exact-title selection and resume-then-pause.
 
-## Proof
+### Resume-then-pause proof (2026-07-21)
+
+- Request: resume `Avatar: The Last Airbender` on Netflix in Living Room.
+- Terminal result: `playback_paused_verified`.
+- Broker latency: 35.3 seconds.
+- The controller selected the exact visible title and playback CTA, observed the
+  causal playback transition, sent explicit idempotent **Pause**, and verified
+  fresh stopped-state receipts.
+- An independent status read five seconds after the broker response still
+  reported `idle`, confirming that playback had not resumed.
+
+This proves the Mac mini broker/controller path. It does **not** prove Shortcut
+import, token configuration, iCloud synchronization, or Siri on the iPhone.
+
+## Original search-ready proof (2026-07-20)
 
 Request:
 
@@ -65,7 +81,7 @@ It visibly showed the populated Avatar query and Netflix results.
 - All failures stopped without a result Select. Each live mismatch became a
   deterministic classifier/test case before retrying.
 
-## Automated evidence
+## Original search-ready automated evidence (2026-07-20)
 
 - `108 passed`
 - mypy: clean
@@ -83,13 +99,11 @@ Live verified:
 - warm restored-search recognition;
 - arbitrary query replacement;
 - exact keyboard readback;
-- stop before result selection.
+- cold Netflix profile-picker classification and configured `primary` profile
+  selection;
+- stop before result selection for `search_ready`;
+- exact visible result selection and title detail;
+- resume playback followed by explicit Pause and independent stopped-state
+  verification.
 
-Not yet live verified:
-
-- a cold picker occurring during the integrated command (the recorded picker
-  frame does classify `primary` with strong confidence and exact highlight);
-- visually selecting an exact search result;
-- opening title detail;
-- Resume/Play and now-playing title/episode verification;
-- other rooms, physical TVs, or Siri as a client.
+Not yet live verified: other rooms, physical TVs, or Siri as a client.

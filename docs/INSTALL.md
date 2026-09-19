@@ -16,11 +16,14 @@ Optional environment overrides:
 - `HOME_MEDIA_PYATV_STORAGE` — pyatv credential file (default `~/.config/home-media/pyatv.conf`)
 - `HOME_MEDIA_CREDENTIALS_DIR` — Android TV certs and other secrets
 - `HOME_MEDIA_USE_FAKES=1` — in-memory adapters for demos/tests
+- `HOME_MEDIA_CAPTURE_MODE=persistent|oneshot` — exact-device screenshot worker
+  mode (default `persistent`; `oneshot` is a compatibility fallback)
 
 ## CLI
 
 ```bash
 uv run home-media --json discover
+uv run home-media --json health
 uv run home-media --json rooms list
 uv run home-media --json status --room theater
 uv run home-media --json volume set --room theater --level 20 --dry-run
@@ -41,6 +44,18 @@ long-lived process (e.g. MCP lifespan); across separate CLI processes it fails.
 Credentials land in `~/.config/home-media/pyatv.conf` (mode 0600), never in Git.
 
 Live note: Living Room is already Companion-paired. Theater remains a human pairing gate.
+
+The screenshot/developer pairing is separate from Companion pairing and is
+host-specific. On a new runtime host, use it only while physically present at
+the exact television:
+
+```bash
+uv run home-media --json screen pair --name "Living Room" \
+  --confirm-physical-presence
+```
+
+This may display an on-screen code. Pair one room at a time, keep mutations
+disabled, and require one exact-identity nonblank capture before navigation.
 
 ## Living Room screenshot observer
 
@@ -81,6 +96,37 @@ stdio only. Example Cursor MCP config fragment:
 
 Do not bind an unauthenticated HTTP MCP server to the LAN.
 
+## Restricted Shortcut command
+
+`home-media-shortcut` is a narrow stdin/stdout boundary for Siri v1. It accepts
+at most 8 KiB of UTF-8 JSON, rejects command-line arguments and unknown fields,
+requires an idempotency key, and exposes only `prepare_content` with
+`goal=search_ready`. It never accepts shell text, URLs, button batches, result
+selection, or playback. Before dispatch it records the request in a private
+mode-0600 ledger; completed responses are cached, and pending or ambiguous keys
+are never dispatched again across separate processes.
+
+Example schema:
+
+```json
+{
+  "schema_version": 1,
+  "action": "prepare_content",
+  "room": "living_room",
+  "title": "Avatar: The Last Airbender",
+  "provider": "netflix",
+  "goal": "search_ready",
+  "wake": true,
+  "idempotency_key": "shortcut-unique-request-id"
+}
+```
+
+The default ledger is
+`~/.config/home-media/shortcut_idempotency.json`; override it only with
+`HOME_MEDIA_SHORTCUT_STATE`. Do not delete an ambiguous entry merely to retry a
+request. No SSH forced command is installed by this repository; that remains a
+post-cutover, explicitly approved host setup step.
+
 ## Security
 
 - No PINs, tokens, cookies, or Apple Account material in the repository.
@@ -88,7 +134,7 @@ Do not bind an unauthenticated HTTP MCP server to the LAN.
 - Volume ceiling default 40; override requires an explicit flag.
 - Power off requires `--confirm` / `confirm_power_off=true`.
 - Kill switch: `mutations_enabled: false` in homes.yaml.
-- Never install on `home-media` until explicitly authorized.
+- Never install on the bridge host until explicitly authorized.
 
 ## Limitations
 
@@ -97,5 +143,7 @@ Do not bind an unauthenticated HTTP MCP server to the LAN.
 - Exact volume requires Sonos/absolute route; CEC is relative only.
 - Apple TV wake does not prove the physical TV is on.
 - Deep link open does not prove the exact episode/progress without now-playing evidence.
-- Netflix `search_ready` is live verified only on Living Room today; result Select
-  and playback/resume remain intentionally unsupported.
+- Netflix `search_ready`, exact-title Select, and resume-then-pause are live
+  verified only on Living Room today. The resume broker run completed in 35.3
+  seconds and remained `idle` on an independent status read five seconds later.
+  Shortcut import and iPhone Siri delivery remain pending.

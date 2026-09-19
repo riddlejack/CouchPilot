@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "minimum_frame_interval_ms": 250,
+  "rooms": [
+    {
+      "room_key": "living_room",
+      "stable_device_id": "REPLACE_WITH_STABLE_APPLE_TV_ID",
+      "capture_unique_id": "REPLACE_WITH_EXACT_CMIO_UNIQUE_ID",
+      "expected_localized_name": "Living Room"
+    }
+  ]
+}

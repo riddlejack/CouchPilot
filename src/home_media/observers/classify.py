@@ -41,6 +41,10 @@ class ScreenClassifierResult(BaseModel):
     screenshot_sha: str | None = None
     highlighted_profile_name: str | None = None
     error: str | None = None
+    # Available to the local computer-use bridge as indexed AX-like elements,
+    # but deliberately excluded from logs/JSON because it can contain private
+    # on-screen text.
+    ocr_document: OcrDocument | None = Field(default=None, exclude=True, repr=False)
 
     def public_log_fields(self) -> dict[str, object]:
         """Fields safe for ordinary action / stage evidence."""
@@ -152,6 +156,7 @@ class VisionNetflixClassifier:
             latency_ms=_ms(t0),
             screenshot_sha=sha,
             highlighted_profile_name=classified.highlighted_profile_name,
+            ocr_document=document,
         )
 
 
@@ -219,6 +224,8 @@ def profile_picker_chrome_present(anchors: list[str]) -> bool:
 
 
 def _fake_anchors_for(state: ProviderState) -> list[str]:
+    if state == ProviderState.APPLE_HOME:
+        return ["apple.chrome.app_grid"]
     if state == ProviderState.PROFILE_PICKER:
         return [ANCHOR_PROFILE_CHOOSE, ANCHOR_PROFILE_WHOS]
     if state == ProviderState.HOME:

@@ -79,7 +79,8 @@ All tests below require the user to be present and approve the category.
 - [ ] Status call succeeds after reconnecting from stored credentials.
 - [ ] Installed apps list returns live bundle IDs.
 - [ ] One agreed app opens and current app/now-playing evidence is recorded.
-- [ ] Play/pause or a harmless remote key is observed on the correct device.
+- [ ] An agreed explicit Pause or a harmless remote key is observed on the
+      correct device.
 - [ ] `turn_on` wakes Apple TV.
 - [ ] User reports whether the physical Sony TV also wakes via HDMI-CEC.
 - [ ] Physical-TV power result is not inferred solely from Apple TV response.
@@ -110,6 +111,19 @@ For each prioritized provider:
 - [x] Raw remote/text tools remain disabled unless explicitly debug-enabled.
 
 Evidence: `docs/LIVING_ROOM_NETFLIX_LIVE_GATE.md`.
+
+## Living Room Netflix resume gate (completed 2026-07-21)
+
+- [x] Exact requested title and playback CTA are visually verified before Select.
+- [x] Broker returns `playback_paused_verified` without repeating Select.
+- [x] Controller uses explicit idempotent Pause rather than a playback toggle.
+- [x] Broker latency is recorded honestly: 35.3 seconds.
+- [x] Independent status five seconds later remains `idle`.
+- [ ] Signed Shortcut is imported and privately configured.
+- [ ] iCloud synchronization and unlocked/locked iPhone Siri are proven.
+
+Evidence: `docs/LIVING_ROOM_NETFLIX_LIVE_GATE.md` and
+`docs/SIRI_SHORTCUT_DELIVERY.md`.
 
 ## Sonos live gate
 

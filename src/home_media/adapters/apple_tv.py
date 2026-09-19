@@ -33,7 +33,11 @@ from pyatv.exceptions import (
 from pyatv.interface import AppleTV, BaseConfig, PairingHandler
 from pyatv.storage.file_storage import FileStorage
 
-from home_media.config import ensure_private_file, pyatv_storage_path
+from home_media.config import (
+    create_private_file,
+    pyatv_storage_path,
+    validate_private_file,
+)
 from home_media.errors import (
     AuthFailedError,
     AuthRequiredError,
@@ -132,6 +136,7 @@ class AppleTVAdapter:
         self._pairings: dict[str, _PairingState] = {}
         self._connection_manager: Any | None = None
         self._manager_lock = asyncio.Lock()
+        self._closed = False
 
     async def discover(self) -> list[DiscoveredEndpoint]:
         storage = await self._ensure_storage()
@@ -266,8 +271,13 @@ class AppleTVAdapter:
             await asyncio.wait_for(handler.finish(), timeout=_PAIR_TIMEOUT_S)
             if handler.has_paired:
                 storage = await self._ensure_storage()
+                # pyatv writes in place, so create the target privately before
+                # the first credential save to avoid a permissive creation window.
+                create_private_file(pyatv_storage_path())
                 await storage.save()
-                ensure_private_file(pyatv_storage_path())
+                validate_private_file(
+                    pyatv_storage_path(), label="pyatv credential storage"
+                )
                 session.state = "completed"
                 session.message = "Paired"
             else:
@@ -470,6 +480,9 @@ class AppleTVAdapter:
 
     async def aclose(self) -> None:
         """Close pairing handlers and any cached resources."""
+        if self._closed:
+            return
+        self._closed = True
         for session_id in list(self._pairings):
             state = self._pairings.pop(session_id, None)
             if state is None:
@@ -481,6 +494,22 @@ class AppleTVAdapter:
         if self._connection_manager is not None:
             await self._connection_manager.aclose()
             self._connection_manager = None
+
+    def health_snapshot(self) -> dict[str, Any]:
+        """Return process-local connection counters without device identifiers."""
+        manager = self._connection_manager
+        if manager is None:
+            return {
+                "status": "stopped" if self._closed else "idle",
+                "connection_manager_started": False,
+                "cached_connections": 0,
+                "cached_configs": 0,
+                "scans": 0,
+                "connects": 0,
+                "reuses": 0,
+                "invalidations": 0,
+            }
+        return dict(manager.health_snapshot())
 
     async def get_volume(self, device_id: str) -> dict[str, Any]:
         conf = await self._resolve_config(device_id)
@@ -564,11 +593,12 @@ class AppleTVAdapter:
         async with self._storage_lock:
             if self._storage is not None:
                 return self._storage
-            path = ensure_private_file(pyatv_storage_path())
+            path = pyatv_storage_path()
+            if path.exists():
+                validate_private_file(path, label="pyatv credential storage")
             loop = asyncio.get_running_loop()
             storage = FileStorage(str(path), loop)
             await storage.load()
-            ensure_private_file(path)
             self._storage = storage
             return storage
 
@@ -577,6 +607,8 @@ class AppleTVAdapter:
 
     async def _ensure_connection_manager(self) -> Any:
         async with self._manager_lock:
+            if self._closed:
+                raise NetworkError("Apple TV adapter is closed", retryable=False)
             if self._connection_manager is not None:
                 return self._connection_manager
             from home_media.connection import AppleTVConnectionManager

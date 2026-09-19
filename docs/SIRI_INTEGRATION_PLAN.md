@@ -2,6 +2,14 @@
 
 Date: 2026-07-20
 
+> Implementation update: the resident authenticated HTTP boundary, deterministic
+> natural-language parser, parse-only Fast GPT-5.6-low fallback, prewarm health,
+> LaunchAgent template, generated Shortcut source, and native App Intent source now live in
+> `src/home_media/broker.py`, `deploy/com.home-media.broker.plist.example`,
+> `shortcuts/Home Media.cherri`, `docs/SIRI_SHORTCUT_DELIVERY.md`, and
+> `ios/HomeMediaIntents/`. The restricted SSH facade
+> remains a useful fallback, but it is no longer the primary same-Wi-Fi transport.
+
 ## Backend milestone reached
 
 Living Room now has a live-verified semantic command for Netflix search-ready:
@@ -14,11 +22,14 @@ room + title + provider + goal
   -> query_verified (no result Select)
 ```
 
-That is the contract Siri should call. The next Siri implementation step is the
-Stage 1 restricted SSH Shortcut; it no longer needs to send a message to a
-general LLM or ask a human what is on the TV. The spoken success response for
-the verified slice is: “Netflix search is ready for Avatar in Living Room. Select
-a result.” Resume wording remains forbidden until playback is actually proven.
+The resident HTTP broker now calls this contract directly. For `title_open` and
+Netflix `resume`, the controller continues through exact-frame visual decisions;
+resume is reported only after causal playback evidence, an explicit idempotent
+Pause, and fresh stopped-state receipts. The Living Room broker path is now live
+verified: it returned `playback_paused_verified` in 35.3 seconds, and an
+independent status read five seconds later still reported `idle`. The SSH facade
+remains a fallback transport. Shortcut import and iPhone Siri delivery are not
+yet complete.
 
 ## Decision
 
@@ -46,7 +57,7 @@ There is also a no-new-app prototype:
 ```text
 "Siri, Home Media"
       -> Shortcut asks/dictates the request
-      -> Run Script over SSH or authenticated local request
+      -> authenticated local request
       -> semantic Home Media command on Mac mini
       -> Siri speaks the structured result
 ```
@@ -128,36 +139,15 @@ being built.
 
 ### Preferred transport for the first proof
 
-Use Shortcuts' Run Script over SSH action to the Mac mini. It avoids opening an
-unauthenticated LAN port and reuses a mature encrypted channel.
+Use the resident authenticated HTTP broker and the generated Shortcut in
+`shortcuts/Home Media.cherri`. The Shortcut sends one natural-language sentence
+to `POST /v1/intent`, creates a unique idempotency key, never retries, and returns
+only the broker's `spoken_response`. All parsing and validation remain on the
+Mac mini. Exact build/import steps are in `docs/SIRI_SHORTCUT_DELIVERY.md`.
 
-Create a dedicated, narrowly authorized Mac account or forced-command SSH key.
-The key may invoke only a wrapper such as `home-media-shortcut`; it must not
-provide an unrestricted interactive shell.
-
-The wrapper reads structured JSON or raw dictated text from standard input. It
-never interpolates dictated text into a shell command. It calls the same
-`ApplicationService` as CLI/MCP and prints one versioned JSON result.
-
-Possible Shortcut steps:
-
-1. Dictate Text or Ask for Input.
-2. Optionally use iOS 27's Use Model action to extract a constrained dictionary:
-   `room`, `title`, `provider`, `goal`, and optional `volume`.
-3. Validate `room`, `goal`, and provider against fixed lists in the Shortcut.
-4. Send the dictionary as standard input to the restricted SSH command.
-5. Parse the returned JSON.
-6. Speak the human-readable result or failure.
-
-The model is a convenience parser only. The Mac mini must revalidate every
-field, resolve exactly one room, enforce safety limits, and refuse unsupported
-actions.
-
-### Alternative local API prototype
-
-Once the HTTP service described below exists, replace SSH with Shortcuts' Get
-Contents of URL action. Do not expose the server publicly merely to simplify a
-Shortcut.
+The listener is LAN-only and bearer-authenticated. Do not expose it through the
+router. The restricted SSH wrapper remains an encrypted fallback if HTTP local
+network policy fails, but it is no longer the primary path.
 
 ## Stage 2: native iOS 27 App Intents client
 
@@ -351,7 +341,7 @@ completion within the current intent budget.
 Apple recommends validating App Intents progressively. Follow this order:
 
 1. Backend unit/contract tests and HTTP authentication/idempotency tests.
-2. Shortcut-over-SSH execution using fakes.
+2. Generated Shortcut artifact validation and broker HTTP execution using fakes.
 3. One approved real Shortcut command to Search Ready on Living Room.
 4. Xcode AppIntentsTesting for intents, entities, and queries out of process.
 5. Shortcuts app inspection for parameter shape and dialogs.
@@ -366,7 +356,10 @@ Acceptance targets:
 - Search Ready never selects or plays.
 - Resume never reports success for the wrong title.
 - Repeated Siri delivery with one idempotency key executes once.
-- Median same-LAN Siri-to-query-ready latency <=7 seconds; p95 <=15 seconds.
+- Target: median same-LAN Siri-to-query-ready latency <=7 seconds and p95 <=15
+  seconds. This acceptance target has not yet been established or achieved; the
+  first verified resume run took 35.3 seconds and is not enough to calculate
+  either percentile.
 - Offline hub and timeout errors produce a clear spoken result within the Siri
   interaction rather than hanging.
 
@@ -374,7 +367,7 @@ Acceptance targets:
 
 1. Finish the provider-aware Apple TV core and its safety/lifecycle repair.
 2. Preserve the Siri-compatible service/result contract during that work.
-3. Build the restricted SSH wrapper and install the two-turn Shortcut.
+3. Sign, import, and iCloud-sync the generated two-turn Shortcut.
 4. Prove one live Siri -> Mac mini -> Living Room Search Ready command.
 5. With explicit approval, install Xcode 27 and create the signed iOS app.
 6. Implement App Entities, App Intents, and App Shortcuts.

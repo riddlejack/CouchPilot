@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from pathlib import Path
 
 import pytest
 
+from home_media.config import create_private_file
 from home_media.content.router import ContentGoal, ContentRoute, plan_content_routes
 from home_media.content.urls import netflix_title_url_candidates, validate_content_url
 from home_media.errors import (
+    AmbiguousOutcomeError,
     ConfigError,
     IdempotencyConflictError,
+    MutationsDisabledError,
     SafetyBlockedError,
     UnsupportedError,
 )
@@ -30,6 +34,33 @@ def test_fail_closed_config_without_fakes(tmp_path: Path) -> None:
         ApplicationService.from_config_path(missing, use_fakes=False)
 
 
+def test_live_config_rejects_group_or_world_permissions(tmp_path: Path) -> None:
+    path = tmp_path / "homes.yaml"
+    path.write_text("schema_version: 1\nrooms: []\ndevices: []\n", encoding="utf-8")
+    os.chmod(path, 0o644)
+    with pytest.raises(ConfigError, match="0600"):
+        ApplicationService.from_config_path(path, use_fakes=False)
+
+
+def test_create_private_file_is_exclusive_mode_0600_and_rejects_unsafe_existing(
+    tmp_path: Path,
+) -> None:
+    private = create_private_file(tmp_path / "private.json")
+    assert oct(private.stat().st_mode & 0o777) == "0o600"
+
+    unsafe = tmp_path / "unsafe.json"
+    unsafe.write_text("", encoding="utf-8")
+    os.chmod(unsafe, 0o644)
+    with pytest.raises(ConfigError, match="0600"):
+        create_private_file(unsafe)
+    assert oct(unsafe.stat().st_mode & 0o777) == "0o644"
+
+    link = tmp_path / "private-link.json"
+    link.symlink_to(private)
+    with pytest.raises(ConfigError, match="symlink"):
+        create_private_file(link)
+
+
 def test_fakes_opt_in_uses_sanitized_seed_not_private_default(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -37,6 +68,45 @@ def test_fakes_opt_in_uses_sanitized_seed_not_private_default(
     svc = ApplicationService.from_config_path(use_fakes=True)
     assert svc.registry.config.home_name == "primary"
     assert svc.registry.room("theater").apple_tv_id == "00000000-0000-4000-8000-000000000001"
+
+
+@pytest.mark.asyncio
+async def test_kill_switch_blocks_direct_semantic_and_pairing_paths() -> None:
+    svc = ApplicationService.from_config_path(use_fakes=True)
+    svc.registry.config.mutations_enabled = False
+    svc.executor.mutations_enabled = False
+    apple = svc.adapters["apple_tv"]
+
+    with pytest.raises(MutationsDisabledError):
+        await svc.prepare_content(
+            "living_room",
+            "Avatar",
+            provider="netflix",
+            goal="search_ready",
+        )
+    with pytest.raises(MutationsDisabledError):
+        await svc.start_pairing("family_room")
+    with pytest.raises(MutationsDisabledError):
+        await svc.finish_pairing("not-started", "not-a-real-pin")
+
+    assert apple.mutations == []
+    assert apple.sessions == {}
+
+
+@pytest.mark.asyncio
+async def test_kill_switch_still_allows_prepare_dry_run() -> None:
+    svc = ApplicationService.from_config_path(use_fakes=True)
+    svc.registry.config.mutations_enabled = False
+    svc.executor.mutations_enabled = False
+    result = await svc.prepare_content(
+        "living_room",
+        "Avatar",
+        provider="netflix",
+        goal="search_ready",
+        dry_run=True,
+    )
+    assert result.stages[0].name == "dry_run"
+    assert svc.adapters["apple_tv"].mutations == []
 
 
 def test_netflix_url_allowlist() -> None:
@@ -122,6 +192,27 @@ async def test_idempotency_same_request_once() -> None:
 
 
 @pytest.mark.asyncio
+async def test_persistent_runtime_idempotency_state_is_bounded() -> None:
+    svc = ApplicationService.from_config_path(use_fakes=True)
+    svc.executor.max_idempotency_entries = 2
+    for index in range(3):
+        await svc.open_app("theater", "netflix", idempotency_key=f"bounded-{index}")
+    assert len(svc.executor._idempotency) <= 2  # noqa: SLF001
+
+    svc._prepare_idempotency_max_entries = 2  # noqa: SLF001
+    for index in range(3):
+        await svc.prepare_content(
+            "living_room",
+            f"Avatar {index}",
+            provider="netflix",
+            goal="search_ready",
+            dry_run=True,
+            idempotency_key=f"prepare-bounded-{index}",
+        )
+    assert len(svc._prepare_touched_at) <= 2  # noqa: SLF001
+
+
+@pytest.mark.asyncio
 async def test_concurrent_idempotency_single_flight() -> None:
     svc = ApplicationService.from_config_path(use_fakes=True)
     apple = svc.adapters["apple_tv"]
@@ -163,6 +254,84 @@ async def test_ambiguous_post_send_does_not_redispatch() -> None:
 
 
 @pytest.mark.asyncio
+async def test_prepare_content_failure_tombstones_idempotency_key() -> None:
+    svc = ApplicationService.from_config_path(use_fakes=True)
+    apple = svc.adapters["apple_tv"]
+    calls = 0
+    real = apple.open_url
+
+    async def sent_then_timeout(device_id: str, url: str):
+        nonlocal calls
+        from home_media.errors import TimeoutError_
+
+        calls += 1
+        await real(device_id, url)
+        raise TimeoutError_("post-send timeout")
+
+    apple.open_url = sent_then_timeout  # type: ignore[method-assign]
+    kwargs = {
+        "room_name": "living_room",
+        "title": "Avatar",
+        "provider": "netflix",
+        "goal": "title_open",
+        "url": "https://www.netflix.com/title/70142405",
+        "idempotency_key": "prepare-ambiguous",
+    }
+    with pytest.raises(AmbiguousOutcomeError):
+        await svc.prepare_content(**kwargs)
+    with pytest.raises(AmbiguousOutcomeError):
+        await svc.prepare_content(**kwargs)
+    assert calls == 1
+
+
+@pytest.mark.asyncio
+async def test_prepare_content_cancellation_after_mutation_cleans_inflight_key() -> None:
+    svc = ApplicationService.from_config_path(use_fakes=True)
+    mutation_started = asyncio.Event()
+
+    async def cancelled_after_send(**kwargs):  # noqa: ANN003, ANN202
+        kwargs["mutation_state"]["attempted"] = True
+        mutation_started.set()
+        await asyncio.Event().wait()
+
+    svc._prepare_content_unlocked = cancelled_after_send  # type: ignore[method-assign]  # noqa: SLF001,E501
+    kwargs = {
+        "room_name": "living_room",
+        "title": "Avatar",
+        "provider": "netflix",
+        "goal": "title_open",
+        "idempotency_key": "prepare-cancelled",
+    }
+    task = asyncio.create_task(svc.prepare_content(**kwargs))
+    await mutation_started.wait()
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert "prepare-cancelled" not in svc._prepare_inflight  # noqa: SLF001
+    assert "prepare-cancelled" in svc._prepare_failed  # noqa: SLF001
+    with pytest.raises(AmbiguousOutcomeError):
+        await svc.prepare_content(**kwargs)
+
+
+@pytest.mark.asyncio
+async def test_prepare_content_pre_send_failure_is_retryable_with_same_key() -> None:
+    svc = ApplicationService.from_config_path(use_fakes=True)
+    kwargs = {
+        "room_name": "living_room",
+        "title": "Avatar",
+        "goal": "title_open",
+        "url": "file:///not-an-allowed-content-route",
+        "idempotency_key": "prepare-pre-send-invalid",
+    }
+    for _ in range(2):
+        with pytest.raises(UnsupportedError):
+            await svc.prepare_content(**kwargs)
+    assert "prepare-pre-send-invalid" not in svc._prepare_failed  # noqa: SLF001
+    assert svc.adapters["apple_tv"].mutations == []
+
+
+@pytest.mark.asyncio
 async def test_room_status_preserves_device_errors() -> None:
     svc = ApplicationService.from_config_path(use_fakes=True)
     status = await svc.get_room_status("family_room")
@@ -186,6 +355,9 @@ async def test_prepare_content_search_ready_no_select() -> None:
     assert result.selected_result is False
     assert result.playback_started is False
     assert result.terminal_status.value != "playing"
+    assert result.total_latency_ms is not None
+    assert result.total_latency_ms >= 0
+    assert all(stage.latency_ms is not None for stage in result.stages)
     selects = [
         m
         for m in apple.mutations

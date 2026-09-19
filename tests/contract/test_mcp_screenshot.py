@@ -9,6 +9,7 @@ import pytest
 from mcp.server.fastmcp.utilities.types import Image
 from mcp.types import ImageContent
 
+from home_media.hub import HomeMediaHub
 from home_media.observers.binding import ObserverBindingStore, fingerprint_udid
 from home_media.observers.blank import synthesize_png
 from home_media.observers.capture import PyMobileDeviceScreenshotCapturer
@@ -47,17 +48,32 @@ async def test_debug_tool_response_contains_image_not_raw_udid(
     store = ObserverBindingStore.empty()
     store.confirm(room_key="living_room", stable_device_id=LIVING, observer_udid="SECRET-UDID-LIVING")
     fake = FakeScreenshotProvider({LIVING: fixture_for_state(ProviderState.HOME)})
+    fake_capture = fake.capture
+
+    async def bound_fake_capture(stable_device_id: str, room_key: str):
+        result = await fake_capture(stable_device_id, room_key)
+        result.observer_udid_fingerprint = fingerprint_udid("SECRET-UDID-LIVING")
+        return result
+
+    fake.capture = bound_fake_capture  # type: ignore[method-assign]
     svc.screenshot_service = RoomScreenshotService(
         svc.registry, bindings=store, provider=fake, require_gate=False
     )
+    hub = HomeMediaHub(lambda: svc)
+    await hub.start()
 
     # Call tool function directly with a minimal context stand-in.
     class _Ctx:
         class request_context:
             class lifespan_context:
-                service = svc
+                pass
 
-    result = await mcp_server.capture_room_screenshot("living_room", ctx=_Ctx())  # type: ignore[arg-type]
+    _Ctx.request_context.lifespan_context.hub = hub
+
+    try:
+        result = await mcp_server.capture_room_screenshot("living_room", ctx=_Ctx())  # type: ignore[arg-type]
+    finally:
+        await hub.aclose()
     assert isinstance(result, list)
     assert any(isinstance(item, Image) for item in result)
     image_item = next(item for item in result if isinstance(item, Image))
@@ -67,8 +83,9 @@ async def test_debug_tool_response_contains_image_not_raw_udid(
     blob = json.dumps(meta_item, default=str)
     assert "SECRET-UDID-LIVING" not in blob
     assert "192.168." not in blob
-    # Fake provider fingerprints its synthetic udid, never the raw binding secret.
-    assert meta_item["data"]["observer_udid_fingerprint"] == fingerprint_udid(f"fake-udid-{LIVING}")
+    assert meta_item["data"]["observer_udid_fingerprint"] == fingerprint_udid(
+        "SECRET-UDID-LIVING"
+    )
     assert meta_item["data"]["room_key"] == "living_room"
     assert meta_item["data"]["device_id"] == LIVING
 

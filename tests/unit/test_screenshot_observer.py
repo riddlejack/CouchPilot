@@ -3,15 +3,21 @@
 from __future__ import annotations
 
 import asyncio
+import io
 import os
 import stat
 from pathlib import Path
 
 import pytest
 
-from home_media.errors import ConfigError, TimeoutError_, UnsupportedError
+from home_media.errors import ConfigError, SafetyBlockedError, TimeoutError_, UnsupportedError
 from home_media.observers.binding import ObserverBindingStore, fingerprint_udid
-from home_media.observers.blank import assess_blank_or_protected, synthesize_png
+from home_media.observers.blank import (
+    assess_blank_or_protected,
+    normalize_png_for_vision,
+    synthesize_png,
+    synthesize_png16_rgb,
+)
 from home_media.observers.capture import (
     PyMobileDeviceScreenshotCapturer,
     build_dvt_screenshot_argv,
@@ -20,7 +26,11 @@ from home_media.observers.capture import (
 )
 from home_media.observers.fake import FakeScreenshotProvider, all_state_fixtures, fixture_for_state
 from home_media.observers.retention import prune_screenshots, save_png_private
-from home_media.observers.screenshot import BoundScreenshotProvider, UnavailableScreenshotProvider
+from home_media.observers.screenshot import (
+    BoundScreenshotProvider,
+    UnavailableScreenshotProvider,
+    ui_stability_fingerprint,
+)
 from home_media.observers.service import RoomScreenshotService, classify_from_screenshot
 from home_media.providers.base import ProviderState
 from home_media.providers.netflix import NetflixAdapter
@@ -39,6 +49,30 @@ FIVE_DEVICES = {
     BEDROOM: "udid-bedroom-dddd",
     OFFICE: "udid-office-ee",
 }
+
+
+def _paint_png(
+    png: bytes,
+    box: tuple[int, int, int, int],
+    color: tuple[int, int, int],
+) -> bytes:
+    from PIL import Image, ImageDraw
+
+    with Image.open(io.BytesIO(png)) as image:
+        painted = image.convert("RGB")
+        ImageDraw.Draw(painted).rectangle(box, fill=color)
+        output = io.BytesIO()
+        painted.save(output, format="PNG")
+        return output.getvalue()
+
+
+def test_ui_stability_fingerprint_masks_only_screenshot_toast_corner() -> None:
+    base = synthesize_png(384, 216, (18, 20, 24))
+    toast_only = _paint_png(base, (280, 8, 370, 34), (230, 230, 230))
+    focus_changed = _paint_png(base, (25, 150, 160, 200), (230, 230, 230))
+
+    assert ui_stability_fingerprint(base) == ui_stability_fingerprint(toast_only)
+    assert ui_stability_fingerprint(base) != ui_stability_fingerprint(focus_changed)
 
 
 @pytest.mark.asyncio
@@ -181,6 +215,27 @@ def test_blank_or_protected_detection() -> None:
     assert assess_blank_or_protected(b"\x00\x01").blank_or_protected is True
 
 
+def test_dark_frame_with_visible_controls_is_not_treated_as_drm_black() -> None:
+    black = synthesize_png(384, 216, (0, 0, 0))
+    controls = _paint_png(black, (25, 150, 160, 200), (245, 245, 245))
+    toast_only = _paint_png(black, (280, 8, 370, 34), (245, 245, 245))
+
+    assert assess_blank_or_protected(controls).blank_or_protected is False
+    assert assess_blank_or_protected(toast_only).blank_or_protected is True
+
+
+def test_16bit_capture_is_assessed_and_normalized_for_vision() -> None:
+    black = synthesize_png16_rgb(8, 8, (0, 0, 0))
+    color = synthesize_png16_rgb(8, 8, (52000, 10000, 10000))
+
+    assert assess_blank_or_protected(black).reason == "near_black_frame"
+    assert assess_blank_or_protected(color).reason == "visible_content"
+    normalized = normalize_png_for_vision(color)
+    assert normalized is not None
+    assert normalized != color
+    assert assess_blank_or_protected(normalized).reason == "visible_content"
+
+
 def test_private_file_modes_and_retention(tmp_path: Path) -> None:
     png = synthesize_png(4, 4, (50, 50, 200))
     path = save_png_private(png, room_key="living_room", sha256="abc123def456", directory=tmp_path)
@@ -210,6 +265,14 @@ def test_binding_store_duplicate_and_room_mismatch(tmp_path: Path) -> None:
     public = loaded.public_view()
     assert public[0]["observer_udid_fingerprint"] == fingerprint_udid("u-living")
     assert "u-living" not in str(public)
+
+
+def test_binding_store_rejects_unsafe_permissions(tmp_path: Path) -> None:
+    path = tmp_path / "bindings.json"
+    path.write_text('{"schema_version": 1, "bindings": {}}', encoding="utf-8")
+    os.chmod(path, 0o644)
+    with pytest.raises(ConfigError, match="0600"):
+        ObserverBindingStore.load(path)
 
 
 @pytest.mark.asyncio
@@ -280,6 +343,60 @@ async def test_room_service_living_room_not_theater() -> None:
     meta = result.public_metadata()
     assert "udid-living-room-aaaa" not in str(meta)
     assert meta["observer_udid_fingerprint"] == fingerprint_udid("udid-living-room-aaaa")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mismatch", ["device", "room", "observer"])
+async def test_room_service_rejects_mismatched_capture_identity(mismatch: str) -> None:
+    svc = ApplicationService.from_config_path(use_fakes=True)
+    store = ObserverBindingStore.empty()
+    store.confirm(room_key="living_room", stable_device_id=LIVING, observer_udid="u-living")
+
+    class MismatchedProvider:
+        async def capture(self, stable_device_id: str, room_key: str):
+            result = finalize_png_result(
+                synthesize_png(12, 8, (30, 180, 30)),
+                stable_device_id=stable_device_id,
+                room_key=room_key,
+                udid="u-living",
+                latency_ms=1,
+            )
+            if mismatch == "device":
+                result.device_id = THEATER
+            elif mismatch == "room":
+                result.room_key = "theater"
+            else:
+                result.observer_udid_fingerprint = fingerprint_udid("u-other")
+            return result
+
+    room_svc = RoomScreenshotService(svc.registry, bindings=store, provider=MismatchedProvider())
+    with pytest.raises(SafetyBlockedError):
+        await room_svc.capture_room("living_room", save=False, prune=False)
+
+
+def test_room_service_health_propagates_worker_degradation_without_secrets() -> None:
+    svc = ApplicationService.from_config_path(use_fakes=True)
+    store = ObserverBindingStore.empty()
+    store.confirm(room_key="living_room", stable_device_id=LIVING, observer_udid="u-living")
+
+    class BrokenHealthCapturer:
+        def health_snapshot(self) -> dict[str, object]:
+            raise RuntimeError("private-observer-u-living")
+
+    room_svc = RoomScreenshotService(
+        svc.registry,
+        bindings=store,
+        capturer=BrokenHealthCapturer(),  # type: ignore[arg-type]
+    )
+
+    health = room_svc.health_snapshot()
+
+    assert health["status"] == "degraded"
+    assert health["worker"] == {
+        "status": "degraded",
+        "last_error_code": "health_snapshot_failed",
+    }
+    assert "u-living" not in str(health)
 
 
 @pytest.mark.asyncio

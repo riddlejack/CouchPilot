@@ -12,8 +12,24 @@ htmlcov/
 .env
 credentials*.json
 secrets*.yaml
+homes.yaml
+observer_bindings.json
+airplay-capture.json
+airplay-frames/
+pyatv.conf
+shortcut_idempotency.json
+.shortcut_idempotency.json.lock
+broker_idempotency.json
+.broker_idempotency.json.lock
+broker-token
 *.pem
 *.key
+
+# Generated Apple Shortcut artifacts (signed files may contain import answers)
+shortcuts/*.shortcut
+shortcuts/*.plist
+shortcuts/*_processed.cherri
+dist/*.shortcut
 
 # Local private runtime / live reports (may contain LAN details)
 docs/live/
@@ -28,3 +44,21 @@ discovery/*.private.yaml
 # Calibration screenshots / recipe fixtures may contain profile/viewing data
 .private/
 fixtures/private/
+
+# SwiftPM products are rebuilt and ad-hoc signed on the target Mac.
+native/**/.build/
+native/**/.swiftpm/
+
+# Agent configuration and Apple signing/renewal artifacts stay on the local bridge.
+agent.yaml
+wda-signing.xcconfig
+*.p12
+*.pfx
+*.mobileprovision
+*.provisionprofile
+*.xctestrun
+*.xcresult/
+*.ipa
+*.app/
+renewal-private/
+capture-output/

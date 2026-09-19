@@ -6,24 +6,24 @@ import os
 
 import pytest
 
-from home_media.mcp_server import _FACTORY_CALLS, AppContext, app_lifespan, mcp
+import home_media.mcp_server as mcp_server
 
 
 @pytest.mark.asyncio
 async def test_mcp_lifespan_single_service_and_shutdown(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HOME_MEDIA_USE_FAKES", "1")
-    before = _FACTORY_CALLS
-    async with app_lifespan(mcp) as ctx:
-        assert isinstance(ctx, AppContext)
+    before = mcp_server._FACTORY_CALLS  # noqa: SLF001
+    async with mcp_server.app_lifespan(mcp_server.mcp) as ctx:
+        assert isinstance(ctx, mcp_server.AppContext)
         assert ctx.factory_calls == before + 1
         svc = ctx.service
         rooms = await svc.list_rooms()
         assert any(r["key"] == "living_room" for r in rooms)
         # Second call reuses same service instance (no new factory in lifespan).
-        mid = _FACTORY_CALLS
+        mid = mcp_server._FACTORY_CALLS  # noqa: SLF001
         status = await svc.get_room_status("theater")
         assert status.audio is not None
-        assert mid == _FACTORY_CALLS
+        assert mid == mcp_server._FACTORY_CALLS  # noqa: SLF001
         apple = svc.adapters["apple_tv"]
         await svc.prepare_content(
             "living_room",
@@ -40,10 +40,14 @@ async def test_mcp_lifespan_single_service_and_shutdown(monkeypatch: pytest.Monk
             idempotency_key="mcp-life-1",
         )
         assert again.selected_result is False
-        assert "press_remote_key" not in {t.name for t in mcp._tool_manager.list_tools()}  # noqa: SLF001
-        assert "enter_text" not in {t.name for t in mcp._tool_manager.list_tools()}  # noqa: SLF001
-        assert "prepare_content" in {t.name for t in mcp._tool_manager.list_tools()}  # noqa: SLF001
-        assert "finish_pairing" not in {t.name for t in mcp._tool_manager.list_tools()}  # noqa: SLF001
+        names = {  # noqa: SLF001
+            tool.name for tool in mcp_server.mcp._tool_manager.list_tools()
+        }
+        assert "press_remote_key" not in names
+        assert "enter_text" not in names
+        assert "prepare_content" in names
+        assert "start_pairing" not in names
+        assert "finish_pairing" not in names
         _ = apple
     # After shutdown, aclose ran (sessions cleared on fake).
     assert os.environ["HOME_MEDIA_USE_FAKES"] == "1"
@@ -54,7 +58,7 @@ async def test_mcp_concurrent_prepare_idempotent(monkeypatch: pytest.MonkeyPatch
     import asyncio
 
     monkeypatch.setenv("HOME_MEDIA_USE_FAKES", "1")
-    async with app_lifespan(mcp) as ctx:
+    async with mcp_server.app_lifespan(mcp_server.mcp) as ctx:
         svc = ctx.service
 
         async def call() -> str:

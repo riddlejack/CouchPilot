@@ -14,6 +14,7 @@ from home_media.providers.base import ProviderState
 
 # Distinct non-black colors per state so blank detection stays false (except blank/playing).
 _STATE_COLORS: dict[ProviderState, tuple[int, int, int]] = {
+    ProviderState.APPLE_HOME: (32, 64, 110),
     ProviderState.PROFILE_PICKER: (40, 120, 200),
     ProviderState.HOME: (200, 40, 40),
     ProviderState.SEARCH_NAV: (40, 200, 80),
@@ -115,6 +116,10 @@ class FakeScreenshotProvider:
         result.metadata.capture_backend = "fake"
         self._labels[digest] = fixture.state
         highlighted = self._highlighted_by_device.get(stable_device_id)
+        if highlighted is None and self._state_source is not None:
+            highlighted = getattr(self._state_source, "highlighted_profile", {}).get(
+                stable_device_id
+            )
         if highlighted and fixture.state == ProviderState.PROFILE_PICKER:
             self._highlighted[digest] = highlighted
         if fixture.state in {ProviderState.BLANK_OR_PROTECTED, ProviderState.PLAYING}:

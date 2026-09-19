@@ -7,7 +7,7 @@ import hashlib
 import json
 import time
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from home_media.audit import audit
@@ -57,6 +57,7 @@ class _IdempotencyEntry:
     fingerprint: str
     result: ActionResult | None = None
     in_flight: asyncio.Future[ActionResult] | None = None
+    touched_at: float = field(default_factory=time.monotonic)
 
 
 class Executor:
@@ -67,18 +68,47 @@ class Executor:
         mutations_enabled: bool = True,
         max_retries: int = 2,
         retry_backoff_s: float = 0.25,
+        idempotency_ttl_s: float = 15 * 60,
+        max_idempotency_entries: int = 512,
     ) -> None:
         self.adapters = adapters
         self.mutations_enabled = mutations_enabled
         self.max_retries = max_retries
         self.retry_backoff_s = retry_backoff_s
+        self.idempotency_ttl_s = idempotency_ttl_s
+        self.max_idempotency_entries = max_idempotency_entries
         self._room_locks: dict[str, asyncio.Lock] = {}
         self._idempotency: dict[str, _IdempotencyEntry] = {}
+        self._idempotency_lock = asyncio.Lock()
 
     def _lock_for(self, room_key: str) -> asyncio.Lock:
         if room_key not in self._room_locks:
             self._room_locks[room_key] = asyncio.Lock()
         return self._room_locks[room_key]
+
+    def room_lock(self, room_key: str) -> asyncio.Lock:
+        """Supported per-room serialization seam for composite operations."""
+        return self._lock_for(room_key)
+
+    def _prune_idempotency(self) -> None:
+        now = time.monotonic()
+        expired = [
+            key
+            for key, entry in self._idempotency.items()
+            if entry.in_flight is None and now - entry.touched_at > self.idempotency_ttl_s
+        ]
+        for key in expired:
+            self._idempotency.pop(key, None)
+        completed = sorted(
+            (
+                (entry.touched_at, key)
+                for key, entry in self._idempotency.items()
+                if entry.in_flight is None
+            )
+        )
+        overflow = max(0, len(self._idempotency) - self.max_idempotency_entries)
+        for _, key in completed[:overflow]:
+            self._idempotency.pop(key, None)
 
     async def execute(
         self,
@@ -89,12 +119,12 @@ class Executor:
         rediscover: Callable[[str], Awaitable[None]] | None = None,
     ) -> ActionResult:
         fingerprint = plan_fingerprint(plan)
-        lock = self._lock_for(plan.room_key)
-
-        async with lock:
+        async with self._idempotency_lock:
+            self._prune_idempotency()
             if idempotency_key:
                 existing = self._idempotency.get(idempotency_key)
                 if existing is not None:
+                    existing.touched_at = time.monotonic()
                     if existing.fingerprint != fingerprint:
                         raise IdempotencyConflictError(
                             "Idempotency key reused with a different request fingerprint"
@@ -133,15 +163,16 @@ class Executor:
             )
         except Exception as exc:
             if idempotency_key:
-                async with lock:
+                async with self._idempotency_lock:
                     entry = self._idempotency.get(idempotency_key)
                     if entry and entry.in_flight and not entry.in_flight.done():
                         entry.in_flight.set_exception(exc)
+                        entry.in_flight.exception()
                         self._idempotency.pop(idempotency_key, None)
             raise
 
         if idempotency_key:
-            async with lock:
+            async with self._idempotency_lock:
                 entry = self._idempotency.get(idempotency_key)
                 if entry is None:
                     self._idempotency[idempotency_key] = _IdempotencyEntry(
@@ -150,9 +181,11 @@ class Executor:
                     )
                 else:
                     entry.result = result
+                    entry.touched_at = time.monotonic()
                     if entry.in_flight is not None and not entry.in_flight.done():
                         entry.in_flight.set_result(result)
                     entry.in_flight = None
+                self._prune_idempotency()
         return result
 
     async def _execute_unlocked(

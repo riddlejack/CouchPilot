@@ -23,6 +23,15 @@ def test_cli_rooms_json() -> None:
     assert "theater" in keys
 
 
+def test_cli_health_is_read_only_and_redacted() -> None:
+    result = runner.invoke(app, ["--json", "--fakes", "health"])
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.output)
+    assert payload["data"]["status"] == "healthy"
+    assert payload["data"]["generation"] == 1
+    assert "192.0.2." not in result.output
+
+
 def test_cli_dry_run_volume() -> None:
     result = runner.invoke(
         app,
@@ -40,10 +49,21 @@ def test_cli_unknown_room_exit_code() -> None:
     assert payload["ok"] is False
 
 
+def test_screenshot_pair_requires_physical_presence_before_subprocess() -> None:
+    result = runner.invoke(
+        app,
+        ["--json", "--fakes", "screen", "pair", "--name", "Living Room"],
+    )
+    assert result.exit_code == 2
+    payload = json.loads(result.output)
+    assert payload["error"]["details"]["reason"] == "physical_presence_confirmation_required"
+
+
 def test_mcp_tool_names_are_narrow() -> None:
     # FastMCP keeps tools in _tool_manager
     tools = mcp._tool_manager.list_tools()  # noqa: SLF001 — contract introspection
     names = {t.name for t in tools}
+    assert "get_hub_health" in names
     assert "discover_devices" in names
     assert "execute_watch_scene" in names
     assert "set_volume" in names
@@ -51,6 +71,7 @@ def test_mcp_tool_names_are_narrow() -> None:
     # Raw remote / PIN finish are not on the default agent surface
     assert "press_remote_key" not in names
     assert "enter_text" not in names
+    assert "start_pairing" not in names
     assert "finish_pairing" not in names
     # Never expose a generic shell
     assert "shell" not in names

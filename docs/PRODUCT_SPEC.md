@@ -184,7 +184,7 @@ do not invent a current absolute value.
 - Default configurable volume ceiling; require an override above it.
 - No calibration, factory reset, service menu, MDM enrollment, account purchase,
   app purchase, or mass-room action without explicit confirmation.
-- Never install or modify software on `home-media` until the user authorizes
+- Never install or modify software on the bridge host until the user authorizes
   that host specifically.
 - Bounded retries with timeouts; no command storms.
 - Per-room action serialization to prevent conflicting agents.
@@ -219,4 +219,3 @@ On the Theater system, a fresh agent can:
 7. Execute the same operations via both CLI and MCP.
 8. Pass automated tests without a live network.
 9. Leave clear capability results for every other discovered room.
-

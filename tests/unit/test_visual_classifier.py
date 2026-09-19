@@ -29,6 +29,13 @@ from home_media.providers.base import ProviderObservation, ProviderState, Transi
 from home_media.providers.executor import ProviderRecipeRunner
 from home_media.providers.netflix import NetflixAdapter
 from home_media.service import ApplicationService
+from home_media.vision_policy import (
+    FocusedTargetKind,
+    ScreenSurface,
+    TitleMatch,
+    VisionDecision,
+    VisionRemoteAction,
+)
 
 LIVING = "00000000-0000-4000-8000-000000000004"
 THEATER = "00000000-0000-4000-8000-000000000001"
@@ -113,6 +120,44 @@ def test_netflix_anchor_home_excludes_search_keyboard() -> None:
     kb = classify_netflix_anchors(keyboard)
     assert kb.state == ProviderState.SEARCH_KEYBOARD
     assert kb.state != ProviderState.HOME
+
+
+def test_apple_home_requires_three_known_app_grid_labels() -> None:
+    app_grid = OcrDocument(
+        tokens=[
+            _tok("Netflix", 0.08, 0.22),
+            _tok("YouTube", 0.30, 0.22),
+            _tok("Hulu", 0.52, 0.22),
+            _tok("Settings", 0.74, 0.22),
+        ]
+    )
+    classified = classify_netflix_anchors(app_grid)
+    assert classified.state == ProviderState.APPLE_HOME
+    assert classified.confidence >= 0.9
+    assert "apple.chrome.app_grid" in classified.anchors
+
+    only_two = OcrDocument(
+        tokens=[
+            _tok("Netflix", 0.08, 0.22),
+            _tok("YouTube", 0.30, 0.22),
+        ]
+    )
+    assert classify_netflix_anchors(only_two).state == ProviderState.UNKNOWN
+
+
+def test_netflix_home_wins_over_any_incidental_app_labels() -> None:
+    home = OcrDocument(
+        tokens=[
+            _tok("Home", 0.05, 0.05),
+            _tok("Shows", 0.2, 0.05),
+            _tok("Movies", 0.35, 0.05),
+            _tok("My Netflix", 0.55, 0.05),
+            _tok("YouTube", 0.10, 0.50),
+            _tok("Hulu", 0.30, 0.50),
+            _tok("Settings", 0.50, 0.50),
+        ]
+    )
+    assert classify_netflix_anchors(home).state == ProviderState.HOME
 
 
 def test_netflix_anchor_search_results_requires_exact_query() -> None:
@@ -496,6 +541,43 @@ async def test_launch_to_playing_stops_without_select() -> None:
     assert selects == []
     assert result.playback_started is False
     assert result.terminal_status.value in {"handoff", "failed"}
+
+
+@pytest.mark.asyncio
+async def test_visible_unknown_screen_uses_vision_for_title_goal_without_relaunch() -> None:
+    class NoActionVision:
+        async def decide(self, _frames, _context):  # noqa: ANN001, ANN202
+            return VisionDecision(
+                surface=ScreenSurface.OTHER,
+                confidence=0.4,
+                title_match=TitleMatch.UNKNOWN,
+                focused_target=None,
+                focused_kind=FocusedTargetKind.NONE,
+                visible_titles=[],
+                safe_to_select=False,
+                playback_visible=False,
+                next_action=VisionRemoteAction.NONE,
+                reason_code="no_safe_action",
+            )
+
+    svc = ApplicationService.from_config_path(use_fakes=True)
+    svc.vision_policy = NoActionVision()  # type: ignore[assignment]
+    apple = svc.adapters["apple_tv"]
+    apple.set_provider_state(LIVING, ProviderState.UNKNOWN.value)
+    fake = FakeScreenshotProvider({LIVING: fixture_for_state(ProviderState.UNKNOWN)})
+    fake.link_provider_state(apple)
+    assert svc.screenshot_service is not None
+    svc.screenshot_service._provider = fake  # noqa: SLF001
+
+    result = await svc.prepare_content(
+        "living_room",
+        "Avatar: The Last Airbender",
+        provider="netflix",
+        goal="title_open",
+    )
+
+    assert result.terminal_status.value == "handoff"
+    assert not any(mutation["action"] == "open_app" for mutation in apple.mutations)
 
 
 def test_unknown_visual_state_yields_to_now_playing_metadata() -> None:

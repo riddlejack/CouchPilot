@@ -25,6 +25,35 @@ ANCHOR_QUERY_POPULATED = "netflix.chrome.query_populated"
 ANCHOR_TITLE_DETAIL = "netflix.chrome.title_detail"
 ANCHOR_ERROR_MODAL = "netflix.chrome.error_or_modal"
 ANCHOR_HIGHLIGHTED_PROFILE = "netflix.chrome.highlighted_profile"
+ANCHOR_APPLE_HOME_GRID = "apple.chrome.app_grid"
+
+# Deliberately omit ambiguous navigation words such as Home, Shows, and Movies.
+# Three distinct branded/system app labels on one frame are strong evidence for
+# the tvOS app grid and keep Apple Home separate from Netflix Home.
+_APPLE_HOME_APP_LABELS = {
+    "app store",
+    "arcade",
+    "computers",
+    "disney+",
+    "espn",
+    "f1 tv",
+    "facetime",
+    "fitness",
+    "hulu",
+    "max",
+    "music",
+    "netflix",
+    "paramount+",
+    "peacock",
+    "photos",
+    "plex",
+    "podcasts",
+    "prime video",
+    "settings",
+    "tubi",
+    "twitch",
+    "youtube",
+}
 
 
 @dataclass(frozen=True)
@@ -98,6 +127,16 @@ def _has_keyboard_anchors(tokens: list[OcrToken]) -> bool:
 def _has_results_chrome(tokens: list[OcrToken]) -> bool:
     phrases = ("titles", "top results", "explore titles", "movies & tv", "results")
     return any(_has_phrase(tokens, p) for p in phrases)
+
+
+def _apple_home_app_label_count(tokens: list[OcrToken]) -> int:
+    labels = {
+        token.normalized_text
+        for token in tokens
+        if 0.08 <= token.cy <= 0.95
+        and token.normalized_text in _APPLE_HOME_APP_LABELS
+    }
+    return len(labels)
 
 
 def _query_visible(tokens: list[OcrToken], requested_query: str | None) -> bool:
@@ -259,6 +298,7 @@ def classify_netflix_anchors(
     query_ok = _query_visible(tokens, requested_query)
     query_populated = _query_field_populated(tokens)
     home_nav = _has_home_nav(tokens)
+    apple_home_app_count = _apple_home_app_label_count(tokens)
 
     if search_chrome:
         anchors.append(ANCHOR_SEARCH_CHROME)
@@ -272,6 +312,16 @@ def classify_netflix_anchors(
         anchors.append(ANCHOR_QUERY_POPULATED)
     if home_nav:
         anchors.append(ANCHOR_HOME_NAV)
+
+    # The Apple app grid can include a Search app label, so search_chrome alone
+    # must not suppress this rule. Netflix profile/detail/error and its strong
+    # Home/keyboard shapes have already taken precedence above.
+    if apple_home_app_count >= 3 and not home_nav and not keyboard:
+        return NetflixAnchorClassification(
+            state=ProviderState.APPLE_HOME,
+            confidence=0.91,
+            anchors=[ANCHOR_APPLE_HOME_GRID, "apple.chrome.app_labels_3plus"],
+        )
 
     # Netflix replaces the literal "Search" heading with the query after text
     # entry.  The live results screen therefore often has keyboard chrome plus
