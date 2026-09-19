@@ -1,7 +1,7 @@
 [project]
 name = "home-media"
 version = "0.1.0"
-description = "Local-first room-aware control for Apple TV, physical TVs, and Sonos"
+description = "CouchPilot: agent-driven Apple TV control through a local MCP bridge"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -19,6 +19,11 @@ dependencies = [
   "androidtvremote2>=0.3.1",
   "httpx>=0.28",
 ]
+
+[project.urls]
+Homepage = "https://github.com/riddlejack/CouchPilot"
+Repository = "https://github.com/riddlejack/CouchPilot"
+Issues = "https://github.com/riddlejack/CouchPilot/issues"
 
 [project.optional-dependencies]
 dev = [

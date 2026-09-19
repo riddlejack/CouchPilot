@@ -29,7 +29,7 @@ from home_media.computer_use import (
     semantics_from_classifier,
     state_age_seconds,
 )
-from home_media.config import DEFAULT_CONFIG_DIR, theater_seed_config, load_home_config
+from home_media.config import DEFAULT_CONFIG_DIR, load_home_config, theater_seed_config
 from home_media.content.cache import VerifiedTargetCache, normalize_title
 from home_media.content.direct_url import DirectURLResolver
 from home_media.content.prepare import (

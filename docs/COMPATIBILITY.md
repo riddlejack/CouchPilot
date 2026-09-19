@@ -40,7 +40,7 @@ Status date: 2026-09-19. This matrix separates observed hardware behavior from i
 - Best-effort on-demand free renewal is feasible only on a prepared Mac with full Xcode, an active Xcode account session, an accessible signing key, network access, and the exact developer-paired Apple TV. The skill checks this when WDA is needed; no scheduler is required. It has not been live-verified. A build must contain a later embedded expiry and be reinstalled successfully before renewal is claimed.
 - In the accepted build, the Python 3.12 wheel was 210,923 bytes, its full dependency environment was about 97 MiB, the optional native runner environment was about 152 MB, and the signed helper was about 2.5 MB. These figures exclude Python, uv, and existing Apple developer support.
 - `pymobiledevice3` is GPL-3.0-or-later. The native backend invokes pinned version 11.15.5 through `uvx` as a separate optional process; do not redistribute it with the MIT core unless distribution obligations are deliberately accepted.
-- The package is not on PyPI. Install from the experimental `codex/apple-tv-agent-preview` branch or a local wheel containing the changes.
+- The package is not on PyPI. Install from the main branch of [CouchPilot](https://github.com/riddlejack/CouchPilot) or a local wheel containing the changes.
 - The plugin's `.mcp.json` invokes the installed `apple-tv-agent-mcp` command and needs no model API key.
 
 The verified managed-runtime result does not establish first-time visual pairing, fresh Developer Disk Image setup, helper signing or installation, seven-day renewal avoidance, Linux/Windows WDA operation, or a durable consumer distribution route.

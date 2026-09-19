@@ -447,7 +447,7 @@ def discover() -> None:
 
 @app.command()
 def configure(
-    key: str = typer.Argument(help="A short device key, such as office"),
+    key: str = typer.Argument(help="A short device key, such as living-room"),
     name: str = typer.Option(..., help="Your label for the device"),
     endpoint: str | None = typer.Option(None, help="Confirmed device's WDA endpoint"),
     stable_id: str | None = typer.Option(None, help="Stable ID from discover; enables pyatv"),

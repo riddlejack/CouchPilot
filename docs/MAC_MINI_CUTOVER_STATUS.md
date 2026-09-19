@@ -4,8 +4,9 @@ Updated: 2026-07-20 21:10 America/Chicago
 
 > Historical checkpoint: this document records the state before Living Room's Mac
 > mini developer pairing, live observer, broker, and Netflix resume gates were
-> completed on 2026-07-21. For current truth, use `CODEX_HANDOFF_CURRENT.md`,
-> `docs/SIRI_BROKER_RUNBOOK.md`, and `docs/LIVING_ROOM_NETFLIX_LIVE_GATE.md`.
+> completed on 2026-07-21. For that completed July slice, see
+> `docs/SIRI_BROKER_RUNBOOK.md` and `docs/LIVING_ROOM_NETFLIX_LIVE_GATE.md`.
+> The current agent route is documented in `docs/AGENT_QUICKSTART.md`.
 
 ## Verdict
 

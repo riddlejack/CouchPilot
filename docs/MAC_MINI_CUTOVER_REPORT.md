@@ -5,7 +5,7 @@ Branch: `codex/mac-mini-runtime`
 
 > Historical checkpoint: the blockers and NO-GO below were accurate for this
 > phase but were resolved for Living Room on 2026-07-21. Current live and rollout
-> status lives in `CODEX_HANDOFF_CURRENT.md`, `docs/SIRI_BROKER_RUNBOOK.md`, and
+> status lives in `docs/SIRI_BROKER_RUNBOOK.md`, and
 > `docs/SIRI_SHORTCUT_DELIVERY.md`.
 
 ## Recommendation

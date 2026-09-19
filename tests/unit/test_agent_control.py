@@ -382,8 +382,8 @@ def _screen_config(*, mutations_enabled: bool = True) -> AgentConfig:
     return AgentConfig(
         devices=[
             AgentDevice(
-                key="office",
-                name="Office",
+                key="living-room",
+                name="Living Room",
                 wda_endpoint="http://wda.test:8100",
                 wda_identity=PINNED_UUID,
             )
@@ -397,8 +397,8 @@ def _managed_screen_config() -> AgentConfig:
     return AgentConfig(
         devices=[
             AgentDevice(
-                key="office",
-                name="Office",
+                key="living-room",
+                name="Living Room",
                 wda_endpoint="http://wda.test:8100",
                 wda_identity=PINNED_UUID,
                 helper=HelperConfig(
@@ -416,8 +416,8 @@ def _refresh_config(endpoint: str = "http://192.168.10.20:8100") -> AgentConfig:
     return AgentConfig(
         devices=[
             AgentDevice(
-                key="office",
-                name="Office",
+                key="living-room",
+                name="Living Room",
                 stable_id="stable-device-id",
                 wda_endpoint=endpoint,
                 wda_identity=PINNED_UUID,
@@ -593,11 +593,11 @@ async def test_old_producer_timestamp_is_not_freshened_on_return(tmp_path: Path)
     fake = FakeWDAClient(observation_kinds=["old_semantic"])
     agent = _agent(fake, tmp_path)
     try:
-        observed = await agent.observe("office")
+        observed = await agent.observe("living-room")
         assert "semantic_timestamps_invalid" in observed.observed.errors
         with pytest.raises(SafetyBlockedError) as caught:
             await agent.act(
-                "office",
+                "living-room",
                 action="press",
                 value="down",
                 observation_id=observed.observation_id,
@@ -627,7 +627,7 @@ async def test_invalid_semantic_intervals_cannot_authorize_actions_or_postcondit
     agent = _agent(fake, tmp_path)
     try:
         observed = await agent.observe(
-            "office",
+            "living-room",
             expected_app="app.current",
             expected_label="Search",
         )
@@ -642,7 +642,7 @@ async def test_invalid_semantic_intervals_cannot_authorize_actions_or_postcondit
 
         with pytest.raises(SafetyBlockedError) as caught:
             await agent.act(
-                "office",
+                "living-room",
                 action="press",
                 value="down",
                 observation_id=observed.observation_id,
@@ -661,7 +661,7 @@ async def test_invalid_semantics_preserve_independently_valid_image_for_press(
     agent = _agent(fake, tmp_path)
     try:
         observed = await agent.observe(
-            "office",
+            "living-room",
             include_image=True,
             expected_app="app.current",
             expected_label="Search",
@@ -672,7 +672,7 @@ async def test_invalid_semantics_preserve_independently_valid_image_for_press(
         assert observed.observed.expected_label_verified is False
 
         result = await agent.act(
-            "office",
+            "living-room",
             action="press",
             value="down",
             observation_id=observed.observation_id,
@@ -693,14 +693,14 @@ async def test_invalid_image_interval_is_discarded_without_losing_semantics(
     fake = FakeWDAClient(observation_kinds=["naive_image"])
     agent = _agent(fake, tmp_path)
     try:
-        observed = await agent.observe("office", include_image=True)
+        observed = await agent.observe("living-room", include_image=True)
         assert observed.observed.image is None
         assert "image_timestamps_invalid" in observed.observed.warnings
         assert observed.observed.errors == []
         assert observed.observed.visible
 
         await agent.act(
-            "office",
+            "living-room",
             action="select",
             value="Search",
             role="SearchField",
@@ -716,11 +716,11 @@ async def test_image_only_observation_allows_press_navigation(tmp_path: Path) ->
     fake = FakeWDAClient(observation_kinds=["image_error", "image_error"])
     agent = _agent(fake, tmp_path)
     try:
-        observed = await agent.observe("office", include_image=True)
+        observed = await agent.observe("living-room", include_image=True)
         assert observed.observed.image is not None
         assert observed.observed.errors
         result = await agent.act(
-            "office",
+            "living-room",
             action="press",
             value="down",
             observation_id=observed.observation_id,
@@ -742,10 +742,10 @@ async def test_image_only_observation_cannot_authorize_semantic_action(
     fake = FakeWDAClient(observation_kinds=["image_error"])
     agent = _agent(fake, tmp_path)
     try:
-        observed = await agent.observe("office", include_image=True)
+        observed = await agent.observe("living-room", include_image=True)
         with pytest.raises(SafetyBlockedError) as caught:
             await agent.act(
-                "office",
+                "living-room",
                 action=action,
                 value="Search",
                 observation_id=observed.observation_id,
@@ -762,12 +762,12 @@ async def test_semantic_failure_without_image_produces_no_action_token(tmp_path:
     fake = FakeWDAClient(observation_kinds=["error"])
     agent = _agent(fake, tmp_path)
     try:
-        observed = await agent.observe("office")
+        observed = await agent.observe("living-room")
         assert "semantic_observation_failed" in observed.observed.errors
         assert "semantic_timestamps_invalid" in observed.observed.errors
         with pytest.raises(SafetyBlockedError) as caught:
             await agent.act(
-                "office",
+                "living-room",
                 action="press",
                 value="down",
                 observation_id=observed.observation_id,
@@ -783,11 +783,11 @@ async def test_helper_restart_invalidates_observation_before_mutation(tmp_path: 
     fake = FakeWDAClient(observation_kinds=["semantic"])
     agent = _agent(fake, tmp_path)
     try:
-        observed = await agent.observe("office")
+        observed = await agent.observe("living-room")
         fake.identity = _identity(generation=1, session_id="session-2")
         with pytest.raises(SafetyBlockedError) as caught:
             await agent.act(
-                "office",
+                "living-room",
                 action="press",
                 value="down",
                 observation_id=observed.observation_id,
@@ -809,8 +809,8 @@ async def test_persistent_client_is_reused_across_observations(tmp_path: Path) -
 
     agent = _agent(fake, tmp_path, factory_hook=factory_hook)
     try:
-        first = await agent.observe("office")
-        second = await agent.observe("office")
+        first = await agent.observe("living-room")
+        second = await agent.observe("living-room")
         assert first.observation_id != second.observation_id
         assert factory_calls == 1
         assert fake.identity_calls == 2
@@ -848,7 +848,7 @@ async def test_stale_private_ip_refreshes_by_stable_identifier_alias(tmp_path: P
     agent = AppleTVAgent(config, client_factory=factory, lease_dir=tmp_path)
     agent.adapter = adapter  # type: ignore[assignment]
     try:
-        observed = await agent.observe("office")
+        observed = await agent.observe("living-room")
         assert observed.observed.visible
         assert factory_calls == [old_endpoint, new_endpoint]
         assert adapter.discover_calls == 1
@@ -886,7 +886,7 @@ async def test_stale_private_ip_never_refreshes_from_name_only_match(tmp_path: P
     agent.adapter = adapter  # type: ignore[assignment]
     try:
         with pytest.raises(WDAError, match="transport failed"):
-            await agent.observe("office")
+            await agent.observe("living-room")
         assert adapter.discover_calls == 1
         assert factory_calls == [old_endpoint]
     finally:
@@ -904,7 +904,7 @@ async def test_nontransport_status_failure_never_triggers_endpoint_discovery(
             DiscoveredEndpoint(
                 device_id="stable-device-id",
                 kind=DeviceKind.APPLE_TV,
-                name="Office",
+                name="Living Room",
                 address="192.168.10.55",
             )
         ]
@@ -917,7 +917,7 @@ async def test_nontransport_status_failure_never_triggers_endpoint_discovery(
     agent.adapter = adapter  # type: ignore[assignment]
     try:
         with pytest.raises(ConfigError, match="not ready"):
-            await agent.observe("office")
+            await agent.observe("living-room")
         assert adapter.discover_calls == 0
     finally:
         await agent.aclose()
@@ -955,11 +955,11 @@ async def test_refreshed_endpoint_wrong_uuid_blocks_before_mutation(tmp_path: Pa
     agent.adapter = adapter  # type: ignore[assignment]
     try:
         with pytest.raises(SafetyBlockedError) as caught:
-            await agent.act("office", action="launch", value="com.example.App")
+            await agent.act("living-room", action="launch", value="com.example.App")
         assert caught.value.details["reason"] == "device_identity_mismatch"
         assert wrong_device.activate_calls == 0
         assert wrong_device.closed is True
-        assert agent._clients["office"] is stale
+        assert agent._clients["living-room"] is stale
     finally:
         await agent.aclose()
 
@@ -986,8 +986,8 @@ async def test_managed_helper_starts_once_before_private_ip_refresh(
     config = AgentConfig(
         devices=[
             AgentDevice(
-                key="office",
-                name="Office",
+                key="living-room",
+                name="Living Room",
                 stable_id="stable-device-id",
                 wda_endpoint=old_endpoint,
                 wda_identity=PINNED_UUID,
@@ -1004,7 +1004,7 @@ async def test_managed_helper_starts_once_before_private_ip_refresh(
             DiscoveredEndpoint(
                 device_id="stable-device-id",
                 kind=DeviceKind.APPLE_TV,
-                name="Office",
+                name="Living Room",
                 address="192.168.10.55",
             )
         ]
@@ -1012,7 +1012,7 @@ async def test_managed_helper_starts_once_before_private_ip_refresh(
     agent = AppleTVAgent(config, client_factory=factory, lease_dir=tmp_path)
     agent.adapter = adapter  # type: ignore[assignment]
     try:
-        observed = await agent.observe("office")
+        observed = await agent.observe("living-room")
         assert observed.observed.visible
         assert runtime.start_calls == 1
         assert runtime.mark_ready_calls == 1
@@ -1042,7 +1042,7 @@ async def test_local_wda_endpoint_is_never_rewritten(
             DiscoveredEndpoint(
                 device_id="stable-device-id",
                 kind=DeviceKind.APPLE_TV,
-                name="Office",
+                name="Living Room",
                 address="192.168.10.55",
             )
         ]
@@ -1055,7 +1055,7 @@ async def test_local_wda_endpoint_is_never_rewritten(
     agent.adapter = adapter  # type: ignore[assignment]
     try:
         with pytest.raises(WDAError, match="transport failed"):
-            await agent.observe("office")
+            await agent.observe("living-room")
         assert adapter.discover_calls == 0
         assert factory_calls == [endpoint]
     finally:
@@ -1068,17 +1068,17 @@ async def test_ambiguous_mutation_consumes_token_and_is_never_repeated(tmp_path:
     fake.press_error = WDAMutationUncertain("press")
     agent = _agent(fake, tmp_path)
     try:
-        observed = await agent.observe("office")
+        observed = await agent.observe("living-room")
         with pytest.raises(WDAMutationUncertain):
             await agent.act(
-                "office",
+                "living-room",
                 action="press",
                 value="down",
                 observation_id=observed.observation_id,
             )
         with pytest.raises(SafetyBlockedError) as repeated:
             await agent.act(
-                "office",
+                "living-room",
                 action="press",
                 value="down",
                 observation_id=observed.observation_id,
@@ -1096,9 +1096,9 @@ async def test_post_action_observation_error_stays_unverified_and_not_reusable(
     fake = FakeWDAClient(observation_kinds=["semantic", "error"])
     agent = _agent(fake, tmp_path)
     try:
-        before = await agent.observe("office")
+        before = await agent.observe("living-room")
         result = await agent.act(
-            "office",
+            "living-room",
             action="press",
             value="down",
             observation_id=before.observation_id,
@@ -1109,7 +1109,7 @@ async def test_post_action_observation_error_stays_unverified_and_not_reusable(
         assert after.observed.errors
         with pytest.raises(SafetyBlockedError):
             await agent.act(
-                "office",
+                "living-room",
                 action="press",
                 value="down",
                 observation_id=after.observation_id,
@@ -1125,7 +1125,7 @@ async def test_device_uuid_mismatch_blocks_even_observation_free_launch(tmp_path
     agent = _agent(fake, tmp_path)
     try:
         with pytest.raises(SafetyBlockedError) as caught:
-            await agent.act("office", action="launch", value="com.example.app")
+            await agent.act("living-room", action="launch", value="com.example.app")
         assert caught.value.details["reason"] == "device_identity_mismatch"
         assert fake.activate_calls == 0
     finally:
@@ -1142,7 +1142,7 @@ async def test_started_helper_is_marked_ready_only_after_pinned_identity(
     monkeypatch.setattr("home_media.wda_runtime.WDARuntime", lambda _config: runtime)
     agent = _agent(fake, tmp_path, config=_managed_screen_config())
     try:
-        await agent.observe("office")
+        await agent.observe("living-room")
 
         assert fake.identity_calls == 1
         assert runtime.mark_ready_calls == 1
@@ -1162,7 +1162,7 @@ async def test_started_helper_identity_mismatch_never_marks_ready_and_is_stopped
     agent = _agent(fake, tmp_path, config=_managed_screen_config())
 
     with pytest.raises(SafetyBlockedError) as caught:
-        await agent.observe("office")
+        await agent.observe("living-room")
 
     assert caught.value.details["reason"] == "device_identity_mismatch"
     assert runtime.mark_ready_calls == 0
@@ -1184,7 +1184,7 @@ async def test_helper_readiness_timeout_is_end_to_end_bounded_and_stops_child(
     agent = _agent(fake, tmp_path, config=_managed_screen_config())
 
     with pytest.raises(ConfigError, match="did not become ready"):
-        await agent.observe("office")
+        await agent.observe("living-room")
 
     assert runtime.mark_ready_calls == 0
     assert runtime.stop_calls == 1
@@ -1201,7 +1201,7 @@ async def test_cancelled_helper_startup_stops_child_before_propagating_cancel(
     runtime = FakeManagedRuntime()
     monkeypatch.setattr("home_media.wda_runtime.WDARuntime", lambda _config: runtime)
     agent = _agent(fake, tmp_path, config=_managed_screen_config())
-    task = asyncio.create_task(agent.observe("office"))
+    task = asyncio.create_task(agent.observe("living-room"))
     await asyncio.wait_for(fake.entered_readiness.wait(), timeout=1)
 
     task.cancel()
@@ -1223,7 +1223,7 @@ async def test_cancellation_during_threaded_process_start_cannot_detach_child(
     runtime = BlockingStartRuntime()
     monkeypatch.setattr("home_media.wda_runtime.WDARuntime", lambda _config: runtime)
     agent = _agent(fake, tmp_path, config=_managed_screen_config())
-    task = asyncio.create_task(agent.observe("office"))
+    task = asyncio.create_task(agent.observe("living-room"))
     entered = await asyncio.to_thread(runtime.start_entered.wait, 1)
     assert entered is True
 
@@ -1269,7 +1269,7 @@ async def test_aclose_retains_device_ownership_when_helper_will_not_stop(
     tmp_path: Path,
 ) -> None:
     agent = _agent(FakeWDAClient(), tmp_path, config=_managed_screen_config())
-    device = agent.device("office")
+    device = agent.device("living-room")
     agent._lease(device)
     runtime = FakeManagedRuntime(stop_fails=True)
     agent._runtime[device.key] = runtime
@@ -1291,14 +1291,14 @@ async def test_aclose_retains_device_ownership_when_helper_will_not_stop(
 async def test_device_lease_refuses_second_owner_and_releases_on_close(tmp_path: Path) -> None:
     first = _agent(FakeWDAClient(), tmp_path)
     second = _agent(FakeWDAClient(), tmp_path)
-    device = first.device("office")
+    device = first.device("living-room")
     try:
         first._lease(device)
         with pytest.raises(SafetyBlockedError) as caught:
-            second._lease(second.device("office"))
+            second._lease(second.device("living-room"))
         assert caught.value.details["reason"] == "device_in_use"
         await first.aclose()
-        second._lease(second.device("office"))
+        second._lease(second.device("living-room"))
     finally:
         await first.aclose()
         await second.aclose()
@@ -1324,13 +1324,13 @@ async def test_direct_open_url_launches_only_validated_app_store_detail_url(
     canonical: str,
 ) -> None:
     config = AgentConfig(
-        devices=[AgentDevice(key="office", name="Office", stable_id="stable-device-id")]
+        devices=[AgentDevice(key="living-room", name="Living Room", stable_id="stable-device-id")]
     )
     agent = _agent(FakeWDAClient(), tmp_path, config=config)
     adapter = FakeDirectURLAdapter()
     agent.adapter = adapter  # type: ignore[assignment]
     try:
-        result = await agent.direct("office", "open_url", url)
+        result = await agent.direct("living-room", "open_url", url)
         assert result == {"route": "open_app", "value": canonical}
         assert adapter.app_launches == [("stable-device-id", canonical)]
         assert adapter.content_url_attempts == []
@@ -1361,14 +1361,14 @@ async def test_direct_open_url_rejects_malformed_app_store_urls_without_dispatch
     url: str,
 ) -> None:
     config = AgentConfig(
-        devices=[AgentDevice(key="office", name="Office", stable_id="stable-device-id")]
+        devices=[AgentDevice(key="living-room", name="Living Room", stable_id="stable-device-id")]
     )
     agent = _agent(FakeWDAClient(), tmp_path, config=config)
     adapter = FakeDirectURLAdapter()
     agent.adapter = adapter  # type: ignore[assignment]
     try:
         with pytest.raises(UnsupportedError):
-            await agent.direct("office", "open_url", url)
+            await agent.direct("living-room", "open_url", url)
         assert adapter.app_launches == []
         assert adapter.content_url_attempts == [("stable-device-id", url)]
         assert adapter.content_launches == []
@@ -1379,14 +1379,14 @@ async def test_direct_open_url_rejects_malformed_app_store_urls_without_dispatch
 @pytest.mark.asyncio
 async def test_direct_open_url_keeps_existing_provider_validation_route(tmp_path: Path) -> None:
     config = AgentConfig(
-        devices=[AgentDevice(key="office", name="Office", stable_id="stable-device-id")]
+        devices=[AgentDevice(key="living-room", name="Living Room", stable_id="stable-device-id")]
     )
     agent = _agent(FakeWDAClient(), tmp_path, config=config)
     adapter = FakeDirectURLAdapter()
     agent.adapter = adapter  # type: ignore[assignment]
     url = "https://www.netflix.com/title/81234567"
     try:
-        result = await agent.direct("office", "open_url", url)
+        result = await agent.direct("living-room", "open_url", url)
         assert result == {"route": "open_url", "value": url}
         assert adapter.app_launches == []
         assert adapter.content_url_attempts == [("stable-device-id", url)]
@@ -1400,23 +1400,23 @@ async def test_direct_press_dispatches_exact_key_and_invalidates_observation(
     tmp_path: Path,
 ) -> None:
     config = AgentConfig(
-        devices=[AgentDevice(key="office", name="Office", stable_id="stable-device-id")]
+        devices=[AgentDevice(key="living-room", name="Living Room", stable_id="stable-device-id")]
     )
     fake_wda = FakeWDAClient()
     agent = _agent(fake_wda, tmp_path, config=config)
     adapter = FakeDirectURLAdapter()
     agent.adapter = adapter  # type: ignore[assignment]
-    agent._observations["office"] = AgentObservation(
+    agent._observations["living-room"] = AgentObservation(
         observation_id="old-observation",
-        device="office",
+        device="living-room",
         observed=await fake_wda.observe(),
         obtained_monotonic=0,
     )
     try:
-        result = await agent.direct("office", "press", "Home")
+        result = await agent.direct("living-room", "press", "Home")
         assert result == {"sent": True, "verified": False}
         assert adapter.key_presses == [("stable-device-id", "Home")]
-        assert "office" not in agent._observations
+        assert "living-room" not in agent._observations
     finally:
         await agent.aclose()
 
@@ -1424,7 +1424,7 @@ async def test_direct_press_dispatches_exact_key_and_invalidates_observation(
 @pytest.mark.asyncio
 async def test_direct_press_kill_switch_blocks_before_dispatch(tmp_path: Path) -> None:
     config = AgentConfig(
-        devices=[AgentDevice(key="office", name="Office", stable_id="stable-device-id")],
+        devices=[AgentDevice(key="living-room", name="Living Room", stable_id="stable-device-id")],
         mutations_enabled=False,
     )
     agent = _agent(FakeWDAClient(), tmp_path, config=config)
@@ -1432,7 +1432,7 @@ async def test_direct_press_kill_switch_blocks_before_dispatch(tmp_path: Path) -
     agent.adapter = adapter  # type: ignore[assignment]
     try:
         with pytest.raises(SafetyBlockedError) as caught:
-            await agent.direct("office", "press", "Home")
+            await agent.direct("living-room", "press", "Home")
         assert caught.value.details["reason"] == "mutations_disabled"
         assert adapter.key_presses == []
     finally:
@@ -1445,7 +1445,7 @@ async def test_direct_press_uses_existing_adapter_key_allowlist(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     config = AgentConfig(
-        devices=[AgentDevice(key="office", name="Office", stable_id="stable-device-id")]
+        devices=[AgentDevice(key="living-room", name="Living Room", stable_id="stable-device-id")]
     )
     agent = _agent(FakeWDAClient(), tmp_path, config=config)
     resolve_calls = 0
@@ -1458,7 +1458,7 @@ async def test_direct_press_uses_existing_adapter_key_allowlist(
     monkeypatch.setattr(agent.adapter, "_resolve_config", fail_if_resolved)
     try:
         with pytest.raises(UnsupportedError, match="Unknown key"):
-            await agent.direct("office", "press", "not-a-remote-key")
+            await agent.direct("living-room", "press", "not-a-remote-key")
         assert resolve_calls == 0
     finally:
         await agent.aclose()
@@ -1467,14 +1467,14 @@ async def test_direct_press_uses_existing_adapter_key_allowlist(
 @pytest.mark.asyncio
 async def test_kill_switch_blocks_direct_mutation_before_adapter_call(tmp_path: Path) -> None:
     config = AgentConfig(
-        devices=[AgentDevice(key="office", name="Office", stable_id="stable-device-id")],
+        devices=[AgentDevice(key="living-room", name="Living Room", stable_id="stable-device-id")],
         mutations_enabled=False,
     )
     fake = FakeWDAClient()
     agent = _agent(fake, tmp_path, config=config)
     try:
         with pytest.raises(SafetyBlockedError) as caught:
-            await agent.direct("office", "wake")
+            await agent.direct("living-room", "wake")
         assert caught.value.details["reason"] == "mutations_disabled"
     finally:
         await agent.aclose()
@@ -1521,10 +1521,10 @@ async def test_endpoint_can_return_to_original_address_after_refresh(tmp_path: P
     agent = AppleTVAgent(_refresh_config(original), client_factory=factory, lease_dir=tmp_path)
     agent.adapter = adapter  # type: ignore[assignment]
     try:
-        await agent.observe("office")
+        await agent.observe("living-room")
         intermediate.unavailable = True
         adapter.endpoints[0].address = "192.168.10.20"
-        await agent.observe("office")
+        await agent.observe("living-room")
         assert addresses == [original, moved, original]
         assert returned.identity_calls == 1
         assert intermediate.closed
@@ -1543,14 +1543,14 @@ async def test_cancelled_start_does_not_stop_already_running_helper(
     runtime.state = WDARuntimeState.READY
     monkeypatch.setattr("home_media.wda_runtime.WDARuntime", lambda _config: runtime)
     agent = _agent(StartupWDAClient(), tmp_path, config=_managed_screen_config())
-    task = asyncio.create_task(agent.observe("office"))
+    task = asyncio.create_task(agent.observe("living-room"))
     assert await asyncio.to_thread(runtime.start_entered.wait, 1)
     task.cancel()
     runtime.release_start.set()
     with pytest.raises(asyncio.CancelledError):
         await task
     assert runtime.stop_calls == 0
-    assert agent._runtime["office"] is runtime
+    assert agent._runtime["living-room"] is runtime
     await agent.aclose()
     assert runtime.stop_calls == 1
 
@@ -1573,7 +1573,7 @@ async def test_direct_and_visual_routes_share_normalized_physical_device_lease(
         lease_dir=tmp_path,
     )
     try:
-        visual._lease(visual.device("office"))
+        visual._lease(visual.device("living-room"))
         with pytest.raises(SafetyBlockedError):
             direct._lease(direct.device("same-tv"))
         await visual.aclose()

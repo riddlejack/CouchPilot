@@ -1,4 +1,4 @@
-# Apple TV Agent quickstart
+# CouchPilot quickstart
 
 Status: experimental local-checkout packaging, 2026-09-19. The package is not published on PyPI and the plugin is a repo artifact, so install from a checkout or a locally built wheel that contains this code. No OpenAI, Anthropic, or other model API key is required by the bridge.
 
@@ -13,14 +13,14 @@ The optional visual route connects to a correctly signed WebDriverAgent (WDA) he
 Python 3.12 and [`uv`](https://docs.astral.sh/uv/) are required.
 
 ```sh
-git clone --branch codex/apple-tv-agent-preview https://github.com/riddlejack/CouchPilot.git
-cd home-media-control
+git clone https://github.com/riddlejack/CouchPilot.git
+cd CouchPilot
 uv tool install --editable .
 apple-tv-agent setup
 apple-tv-agent doctor
 ```
 
-Use the experimental branch shown above; the default branch may not yet contain the agent package. `setup` discovers local tvOS devices, asks you to select and name one, and handles Companion pairing through an on-screen code. AirPlay metadata pairing is optional. Re-running setup preserves existing visual-helper settings and the configured country, subscriptions, and preferred profile; this preservation was verified on the tested target. Configuration defaults to `~/.config/home-media/agent.yaml`; set `APPLE_TV_AGENT_CONFIG` to use another private path. Treat that file and the pyatv credential store as secrets.
+`setup` discovers local tvOS devices, asks you to select and name one, and handles Companion pairing through an on-screen code. AirPlay metadata pairing is optional. Re-running setup preserves existing visual-helper settings and the configured country, subscriptions, and preferred profile; this preservation was verified on the tested target. Configuration defaults to `~/.config/home-media/agent.yaml`; set `APPLE_TV_AGENT_CONFIG` to use another private path. Treat that file and the pyatv credential store as secrets.
 
 To test a non-editable distribution without publishing, build and install a local wheel:
 
@@ -72,10 +72,10 @@ Use the individual commands when scripting setup or modifying an existing config
 
 ```sh
 apple-tv-agent discover
-apple-tv-agent configure office \
-  --name "Office" \
+apple-tv-agent configure living-room \
+  --name "Living Room" \
   --stable-id '<stable_id_from_discover>'
-apple-tv-agent pair office
+apple-tv-agent pair living-room
 apple-tv-agent preferences --country US --subscription Netflix --profile primary
 apple-tv-agent doctor
 ```
@@ -87,8 +87,8 @@ Pairing prompts for the on-screen code without placing it in shell history. Inst
 An already running WDA can be pinned by its private endpoint:
 
 ```sh
-apple-tv-agent configure office \
-  --name "Office" \
+apple-tv-agent configure living-room \
+  --name "Living Room" \
   --stable-id '<stable_id_from_discover>' \
   --endpoint 'http://<private-lan-address>:8100'
 ```
@@ -96,8 +96,8 @@ apple-tv-agent configure office \
 On an already paired Mac with developer support mounted, the native backend starts a previously installed signed helper through an isolated, pinned `pymobiledevice3` 11.15.5 subprocess:
 
 ```sh
-apple-tv-agent configure office \
-  --name "Office" \
+apple-tv-agent configure living-room \
+  --name "Living Room" \
   --stable-id '<stable_id_from_discover>' \
   --endpoint 'http://<private-lan-address>:8100' \
   --udid '<developer_device_id>' \
@@ -110,8 +110,8 @@ The default launcher is `uvx --from pymobiledevice3==11.15.5`, so first use may 
 The Xcode backend can instead start an already built and signed helper with cached `.xctestrun` products:
 
 ```sh
-apple-tv-agent configure office \
-  --name "Office" \
+apple-tv-agent configure living-room \
+  --name "Living Room" \
   --stable-id '<stable_id_from_discover>' \
   --endpoint 'http://<private-lan-address>:8100' \
   --udid '<developer_device_id>' \

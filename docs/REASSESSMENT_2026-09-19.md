@@ -150,7 +150,7 @@ The original `PRODUCT_SPEC.md:19` explicitly excludes an autonomous visual opera
 
 This independently demonstrates a controller-contract gap at `computer_use.py:435` and `:482`. It does not prove that every production backend accepts hour-old images: the stream backend separately checks an age limit. Nevertheless, that backend returns the latest acceptable frame without a post-action barrier, and the controller discards producer timing. A recently captured pre-action frame can still be mislabeled as a new post-action observation. Passing tests did not catch this distinction.
 
-**Reported by the July records; not reverified on hardware:** Living Room Netflix search, exact-title selection, and resume-then-pause succeeded in bounded trials. One documented broker run took 35.3 seconds. Later notes report full-frame capture at approximately 9–16 seconds and a native streaming daemon that never produced a frame. The newer handoff supersedes earlier optimistic observation notes. See `CODEX_HANDOFF_CURRENT.md:19` and `docs/LIVING_ROOM_NETFLIX_LIVE_GATE.md:22`.
+**Reported by the July records; not reverified on hardware:** Living Room Netflix search, exact-title selection, and resume-then-pause succeeded in bounded trials. One documented broker run took 35.3 seconds. Later notes report full-frame capture at approximately 9–16 seconds and a native streaming daemon that never produced a frame. The newer handoff supersedes earlier optimistic observation notes. See `docs/LIVING_ROOM_NETFLIX_LIVE_GATE.md:22`; internal handoff notes remain in the private archive.
 
 ## First physical proof after the nearby Apple TV is ready
 

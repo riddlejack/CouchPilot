@@ -35,7 +35,7 @@ class FakeMCPAgent:
         self.config = SimpleNamespace(
             country="US",
             subscriptions=["netflix"],
-            devices=["office"],
+            devices=["living-room"],
         )
         self.fail_observe = fail_observe
         self.direct_calls: list[tuple[str, str, str]] = []
@@ -43,8 +43,8 @@ class FakeMCPAgent:
     def devices(self) -> list[dict[str, object]]:
         return [
             {
-                "device": "office",
-                "name": "Office",
+                "device": "living-room",
+                "name": "Living Room",
                 "direct_control_configured": True,
                 "screen_control_configured": True,
                 "managed_helper": False,
@@ -163,7 +163,7 @@ class FakeMCPAgent:
             return DeviceStatus(
                 device_id="PRIVATE-DEVICE-ID",
                 kind=DeviceKind.APPLE_TV,
-                name="Office Apple TV",
+                name="Living Room Apple TV",
                 power=PowerState.ON,
                 current_app="Netflix",
                 available=True,
@@ -186,7 +186,7 @@ def _text(result: CallToolResult) -> str:
 
 @pytest.mark.asyncio
 async def test_wire_compaction_does_not_mutate_typed_observation() -> None:
-    observation = await FakeMCPAgent().observe("office", include_image=True)
+    observation = await FakeMCPAgent().observe("living-room", include_image=True)
     original = observation.model_copy(deep=True)
 
     agent_mcp._observation_response(observation)  # noqa: SLF001
@@ -219,24 +219,24 @@ async def test_actual_mcp_protocol_exposes_exact_six_tool_surface(
         control_tool = next(tool for tool in tools.tools if tool.name == "control")
         assert "press" in control_tool.inputSchema["properties"]["operation"]["enum"]
         devices = await session.call_tool("devices", {})
-        status = await session.call_tool("status", {"device": "office"})
-        apps = await session.call_tool("apps", {"device": "office"})
+        status = await session.call_tool("status", {"device": "living-room"})
+        apps = await session.call_tool("apps", {"device": "living-room"})
         control = await session.call_tool(
             "control",
-            {"device": "office", "operation": "transport", "value": "pause"},
+            {"device": "living-room", "operation": "transport", "value": "pause"},
         )
         press = await session.call_tool(
             "control",
-            {"device": "office", "operation": "press", "value": "Home"},
+            {"device": "living-room", "operation": "press", "value": "Home"},
         )
 
     assert devices.isError is not True
-    assert "office" in _text(devices)
+    assert "living-room" in _text(devices)
     assert "external_unknown" in _text(devices)
     assert "not_checked" in _text(devices)
     assert status.isError is not True
     assert "PRIVATE-DEVICE-ID" not in _text(status)
-    assert "Office Apple TV" in _text(status)
+    assert "Living Room Apple TV" in _text(status)
     assert "paired_companion" in _text(status)
     assert apps.isError is not True
     assert control.isError is not True
@@ -244,10 +244,10 @@ async def test_actual_mcp_protocol_exposes_exact_six_tool_surface(
     assert '"sent":true' in _text(press).replace(" ", "").lower()
     assert '"verified":false' in _text(press).replace(" ", "").lower()
     assert fake.direct_calls == [
-        ("office", "status", ""),
-        ("office", "apps", ""),
-        ("office", "transport", "pause"),
-        ("office", "press", "Home"),
+        ("living-room", "status", ""),
+        ("living-room", "apps", ""),
+        ("living-room", "transport", "pause"),
+        ("living-room", "press", "Home"),
     ]
 
 
@@ -263,7 +263,7 @@ async def test_actual_mcp_observe_returns_image_block_without_bytes_in_text(
 
     monkeypatch.setattr(agent_mcp.mcp._mcp_server, "lifespan", lifespan)  # noqa: SLF001
     baseline = await fake.observe(
-        "office",
+        "living-room",
         include_image=True,
         expected_app="app.current",
         expected_label="Search",
@@ -277,7 +277,7 @@ async def test_actual_mcp_observe_returns_image_block_without_bytes_in_text(
         result = await session.call_tool(
             "observe",
             {
-                "device": "office",
+                "device": "living-room",
                 "image": True,
                 "expected_app": "app.current",
                 "expected_label": "Search",
@@ -332,7 +332,7 @@ async def test_actual_mcp_act_compacts_nested_after_observation(
     async with create_connected_server_and_client_session(agent_mcp.mcp) as session:
         result = await session.call_tool(
             "act",
-            {"device": "office", "action": "press", "value": "down"},
+            {"device": "living-room", "action": "press", "value": "down"},
         )
 
     payload = json.loads(_text(result))
@@ -353,7 +353,7 @@ async def test_actual_mcp_error_redacts_endpoint_uuid_and_raw_message(
 
     monkeypatch.setattr(agent_mcp.mcp._mcp_server, "lifespan", lifespan)  # noqa: SLF001
     async with create_connected_server_and_client_session(agent_mcp.mcp) as session:
-        result = await session.call_tool("observe", {"device": "office"})
+        result = await session.call_tool("observe", {"device": "living-room"})
 
     text = _text(result)
     assert "network" in text

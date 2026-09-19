@@ -133,7 +133,7 @@ async def test_status_and_explicit_device_identity_keep_uuid_out_of_public_statu
         if request.url.path == "/status":
             return _status("session-1")
         if request.url.path == "/wda/device/info":
-            return _ok({"uuid": raw_uuid, "name": "Office"})
+            return _ok({"uuid": raw_uuid, "name": "Living Room"})
         raise AssertionError(request.url)
 
     async def operation(client: WDAClient) -> tuple[dict[str, Any], str]:

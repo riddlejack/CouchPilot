@@ -71,7 +71,9 @@ async def test_mutations_disabled_kill_switch() -> None:
 
     reg = RoomRegistry(cfg)
     apple = FakeAppleTVAdapter()
-    apple.seed("00000000-0000-4000-8000-000000000001", name="Theater", address="1.1.1.1", paired=True)
+    apple.seed(
+        "00000000-0000-4000-8000-000000000001", name="Theater", address="1.1.1.1", paired=True
+    )
     adapters = {
         "apple_tv": apple,
         "sonos": FakeSonosAdapter(),

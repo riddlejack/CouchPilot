@@ -31,7 +31,7 @@ folder; it should not contain secrets or remain the working copy.
 Include:
 
 - `src/`, `tests/`, `config/`, and public `docs/`;
-- `README.md`, `CODEX_HANDOFF_CURRENT.md`, `pyproject.toml`, `uv.lock`, and
+- `README.md`, `pyproject.toml`, `uv.lock`, and
   `.python-version`;
 - public, sanitized live-gate documentation.
 

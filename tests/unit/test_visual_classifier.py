@@ -325,7 +325,7 @@ async def test_profile_name_mismatch_prevents_select() -> None:
 
 
 @pytest.mark.asyncio
-async def test_kids_highlight_prevents_jack_profile_select() -> None:
+async def test_kids_highlight_prevents_primary_profile_select() -> None:
     svc = ApplicationService.from_config_path(use_fakes=True)
     _ensure_netflix_profile_name(svc, "primary")
     apple = svc.adapters["apple_tv"]

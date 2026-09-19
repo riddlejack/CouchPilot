@@ -30,7 +30,7 @@ BUNDLE_ID = "com.example.WebDriverAgentRunner.xctrunner"
 def _device(
     device_id: str,
     *,
-    name: str = "Office",
+    name: str = "Living Room",
     address: str = "192.0.2.10",
     protocols: list[str] | None = None,
     identifiers: list[str] | None = None,
@@ -138,8 +138,8 @@ def test_setup_default_slug_avoids_an_existing_device_key(
         AgentConfig(
             devices=[
                 AgentDevice(
-                    key="office",
-                    name="Other Office",
+                    key="living-room",
+                    name="Other Living Room",
                     stable_id="existing-stable-id",
                 )
             ]
@@ -156,8 +156,8 @@ def test_setup_default_slug_avoids_an_existing_device_key(
 
     assert result.exit_code == 0, result.output
     saved = load_agent_config(config_path)
-    assert {device.key for device in saved.devices} == {"office", "office-2"}
-    assert next(device for device in saved.devices if device.key == "office-2").stable_id == (
+    assert {device.key for device in saved.devices} == {"living-room", "living-room-2"}
+    assert next(device for device in saved.devices if device.key == "living-room-2").stable_id == (
         "new-stable-id"
     )
 
@@ -495,9 +495,9 @@ def test_configure_serializes_temporary_helper_cleanup_before_saving(
         agent_cli.app,
         [
             "configure",
-            "office",
+            "living-room",
             "--name",
-            "Office",
+            "Living Room",
             "--stable-id",
             "stable-device",
             "--endpoint",
@@ -541,8 +541,8 @@ def test_pair_prompt_abort_closes_session_without_waiting_on_input_thread(
         AgentConfig(
             devices=[
                 AgentDevice(
-                    key="office",
-                    name="Office",
+                    key="living-room",
+                    name="Living Room",
                     stable_id="stable-device",
                 )
             ]
@@ -577,7 +577,7 @@ def test_pair_prompt_abort_closes_session_without_waiting_on_input_thread(
         lambda *_args, **_kwargs: (_ for _ in ()).throw(agent_cli.typer.Abort()),
     )
 
-    result = runner.invoke(agent_cli.app, ["pair", "office"])
+    result = runner.invoke(agent_cli.app, ["pair", "living-room"])
 
     assert result.exit_code == 1
     assert isinstance(result.exception, SystemExit)
@@ -694,9 +694,9 @@ def test_configure_rejects_invalid_backend_inputs(
         agent_cli.app,
         [
             "configure",
-            "office",
+            "living-room",
             "--name",
-            "Office",
+            "Living Room",
             "--stable-id",
             "stable-device",
             *extra,
@@ -719,9 +719,9 @@ def test_native_config_is_private_and_xctestrun_evidence_is_optional(
         agent_cli.app,
         [
             "configure",
-            "office",
+            "living-room",
             "--name",
-            "Office",
+            "Living Room",
             "--stable-id",
             "stable-device",
             "--backend",
@@ -798,8 +798,8 @@ def test_doctor_forwards_native_backend_and_bundle_to_runtime(
         AgentConfig(
             devices=[
                 AgentDevice(
-                    key="office",
-                    name="Office",
+                    key="living-room",
+                    name="Living Room",
                     stable_id="stable-device",
                     helper=HelperConfig(
                         udid=UDID,
