@@ -2,7 +2,7 @@
 
 **Let your agent control your Apple TV.**
 
-I got sick of screwing around with Apple TV settings, hunting down shows across streaming apps, and relaying an agent’s troubleshooting advice through the remote. CouchPilot lets you ask your agent in plain English to queue up shows, change settings, and navigate apps—especially useful with a projector, where fixing the picture can take longer than picking a movie.
+I got sick of screwing around with Apple TV settings, hunting down shows across streaming apps, and relaying an agent’s troubleshooting advice through the remote. CouchPilot lets you ask your agent in plain English to queue up shows, change settings, and navigate apps—especially useful if using a projector + Apple TV. 
 
 > “Find Breaking Bad and get an episode ready.”
 >
