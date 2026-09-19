@@ -1,14 +1,14 @@
 # 🛋️ CouchPilot
 
-**Your Apple TV. Your agent. Your couch.**
+**Let your agent control your Apple TV.**
 
-Watching TV shouldn’t mean hunting for the remote, guessing which app has your show, or relaying troubleshooting instructions between an AI and a settings menu. CouchPilot’s mission: say what you want in plain English, and let your agent handle the clicking, typing, and fiddling.
+I got sick of screwing around with Apple TV settings, hunting down shows across streaming apps, and relaying an agent’s troubleshooting advice through the remote. CouchPilot lets you ask your agent in plain English to queue up shows, change settings, and navigate apps—especially useful with a projector, where fixing the picture can take longer than picking a movie.
 
 > “Find Breaking Bad and get an episode ready.”
 >
 > “Help me fix the washed-out picture.”
 >
-> “Open Netflix. I’m done navigating.”
+> “Find and install Crossy Road.”
 
 A local, open-source bridge for **Codex, Claude Code, and other MCP agents**. No jailbreak. No separate model API key.
 
