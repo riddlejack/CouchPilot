@@ -46,7 +46,9 @@ async def test_debug_tool_response_contains_image_not_raw_udid(
 
     svc = ApplicationService.from_config_path(use_fakes=True)
     store = ObserverBindingStore.empty()
-    store.confirm(room_key="living_room", stable_device_id=LIVING, observer_udid="SECRET-UDID-LIVING")
+    store.confirm(
+        room_key="living_room", stable_device_id=LIVING, observer_udid="SECRET-UDID-LIVING"
+    )
     fake = FakeScreenshotProvider({LIVING: fixture_for_state(ProviderState.HOME)})
     fake_capture = fake.capture
 

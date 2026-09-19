@@ -1,9 +1,9 @@
 ---
 name: apple-tv-agent
-description: Control and inspect configured Apple TVs through the local Apple TV Agent bridge. Use for app, profile, content, search, playback, audio, and settings goals that require current device state and verified outcomes.
+description: Control and inspect configured Apple TVs through the local CouchPilot bridge. Use for app, profile, content, search, playback, audio, and settings goals that require current device state and verified outcomes.
 ---
 
-# Apple TV Agent
+# CouchPilot Apple TV Agent
 
 Use the six MCP tools exposed by the local bridge. The tools return device state directly to the current agent; they do not call another model.
 
