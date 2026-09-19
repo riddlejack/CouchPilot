@@ -24,10 +24,6 @@ flowchart TD
 
 [pyatv](https://github.com/postlund/pyatv) handles power, playback, app launches, and typing over your local network. For tasks that need the screen, a signed [WebDriverAgent](https://github.com/appium/WebDriverAgent) helper on the Apple TV returns UI labels, focus, and screenshots. Your existing agent chooses the next action and checks the result, using compact text observations first and images when needed.
 
-## Why CouchPilot?
-
-Related [Apple TV MCP projects](https://github.com/trevor-nichols/appletv-mcp) already exist. As of September 2026, I haven’t found a turnkey repo or product covering the full watch-and-troubleshoot workflow I wanted. CouchPilot is my attempt to get there. [Research and alternatives →](docs/REASSESSMENT_2026-09-19.md#existing-projects-and-buy-versus-build-findings)
-
 **[Get started →](docs/AGENT_QUICKSTART.md)** · [What works today](docs/COMPATIBILITY.md) · [MIT license](LICENSE)
 
 **Early preview:** playback, app navigation, and a picture-setting change have been tested on a real Apple TV. Full visual control currently needs a Mac and a signed helper; free signing requires occasional renewal. Cross-service show discovery and seamless setup are still works in progress.
