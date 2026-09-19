@@ -139,3 +139,11 @@ After these changes and privacy cleanup, 419 tests, Ruff, strict mypy, plugin/sk
 validation, and whitespace checks passed. The 210,923-byte wheel passed isolated
 Python 3.12 import and real stdio MCP startup/tool-list/empty-config checks. The
 GitHub preview is an experimental source snapshot, not a PyPI or production release.
+
+The [private GitHub preview](https://github.com/riddlejack/CouchPilot/pull/1)
+now carries this source snapshot. Initial CI exposed ANSI-colored CLI assertions,
+a missing zsh dependency for a macOS Shortcut test, and a native-platform assumption
+in the process-group test. These were corrected: assertions strip formatting, the
+shell test requires its interpreter, and the process-group regression uses owned
+POSIX children and explicit reaping. Current CI results are attached to the PR;
+CI coverage does not establish Linux hardware onboarding.
