@@ -8,7 +8,7 @@ Status date: 2026-09-19. This matrix separates observed hardware behavior from i
 | --- | --- | --- |
 | Agent on macOS, Windows, Linux, or cloud | **Architecture supported; remote transport not bundled** | The agent calls an authenticated local stdio bridge through a separately supplied private connection. Cloud placement does not give it direct LAN or WDA access. |
 | Local bridge on macOS with direct pyatv control | **Verified live on the tested target** | Needs the Apple TV on the local network, a stable discovery ID, and Companion pairing. |
-| Local bridge on Linux | **CI configured; not executed here** | Python/pyatv and the MCP server are portable, but this exact package and Apple TV onboarding flow have not been verified on Linux. |
+| Local bridge on Linux | **Offline CI coverage; hardware unverified** | The GitHub workflow exercises Python/package contracts on Ubuntu. Actual Apple TV discovery, pairing, and control have not been verified on a Linux host. |
 | Local bridge on Windows | **Plausible; not in current CI** | Python/pyatv is portable, but this exact package and Apple TV pairing flow have not been tested here. |
 | Visual bridge with external WDA endpoint | **Verified live on the tested target** | The helper must already be correctly signed, running, private, and identity-pinned. |
 | Managed WDA startup with cached `.xctestrun` | **Implemented; Mac only** | Current manager invokes `xcodebuild test-without-building` and needs a full Xcode developer directory. |
