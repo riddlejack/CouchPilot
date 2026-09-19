@@ -1,8 +1,8 @@
 # Apple TV agent package delivery
 
-Started 2026-09-19. Preserve the existing room/scene implementation and all prior
-working-tree changes. Ship the general agent interface alongside it, sharing the
-existing paired-control adapter. Do not label a mocked capability live verified.
+Started 2026-09-19. Current scope: the Apple TV agent only. The earlier room/scene,
+Sony/Sonos, and Siri stacks are archived in Git history (see [HISTORY.md](HISTORY.md)).
+Do not label a mocked capability live verified.
 
 ## Product contract
 

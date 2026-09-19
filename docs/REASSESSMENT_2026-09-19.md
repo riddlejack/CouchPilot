@@ -1,5 +1,7 @@
 # Apple TV agent control: independent reassessment
 
+> Historical record: some experimental components mentioned here are now archived. See [the scope change](HISTORY.md) for the current package and preserved source.
+
 Date: 2026-09-19. Original scope: first-principles design, current-source research, local code review, and offline validation. Existing working-tree changes were preserved. Subsequent authorized hardware tests on the user's nearby Media Room Apple TV are recorded in [the live spike report](../research/MEDIA_ROOM_2026-09-19.md); they supersede the original untested observation status below.
 
 **Live update:** WDA now demonstrably controls the unmodified tvOS 26.6 device, reads Settings labels/values/focus, selects elements by label, captures full-resolution screenshots in roughly 0.3 seconds in a short sample, and delivers roughly 9–10 MJPEG frames/second with verified changes during navigation. Netflix's profile chooser is observable visually and semantically. Signing renewal and transition/idle handling remain product work; this is a physical proof, not a finished agent product.

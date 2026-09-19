@@ -12,8 +12,21 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
 
-from home_media.content.direct_url import PROVIDER_HINTS
 from home_media.errors import UnsupportedError
+
+PROVIDER_HINTS = {
+    "netflix.com": ("netflix", "com.netflix.Netflix"),
+    "www.netflix.com": ("netflix", "com.netflix.Netflix"),
+    "tv.apple.com": ("apple_tv_plus", "com.apple.TVWatchList"),
+    "www.disneyplus.com": ("disney_plus", "com.disney.disneyplus"),
+    "disneyplus.com": ("disney_plus", "com.disney.disneyplus"),
+    "play.hbomax.com": ("max", "com.hbo.hbonow"),
+    "www.max.com": ("max", "com.hbo.hbonow"),
+    "max.com": ("max", "com.hbo.hbonow"),
+    "www.youtube.com": ("youtube", "com.google.ios.youtube"),
+    "youtube.com": ("youtube", "com.google.ios.youtube"),
+    "youtu.be": ("youtube", "com.google.ios.youtube"),
+}
 
 _NETFLIX_TITLE_PATH_RE = re.compile(r"^/title/(?P<id>\d+)/?$")
 

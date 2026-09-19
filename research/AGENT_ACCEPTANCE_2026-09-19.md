@@ -1,5 +1,7 @@
 # General agent bridge: live acceptance
 
+> Historical record: some experimental components mentioned here are now archived. See [the scope change](../docs/HISTORY.md) for the current package and preserved source.
+
 Target: the user's nearby Apple TV 4K (2nd generation), tvOS 26.6. Exact device
 binding was confirmed against the user's physical-device IP, its developer UDID,
 WDA device identity, and Companion/AirPlay advertisements. Private identifiers,

@@ -1,5 +1,7 @@
 # Apple TV observation spike (tvOS 26.5 / macOS 26)
 
+> Historical record: some experimental components mentioned here are now archived. See [the scope change](../docs/HISTORY.md) for the current package and preserved source.
+
 Date: 2026-07-20. This work was read-only: no remote buttons, focus changes,
 settings changes, or app launches were sent to an Apple TV.
 

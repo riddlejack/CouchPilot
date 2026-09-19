@@ -1,5 +1,7 @@
 # Apple TV agent access and distribution
 
+> Historical record: some experimental components mentioned here are now archived. See [the scope change](../docs/HISTORY.md) for the current package and preserved source.
+
 Date: 2026-09-19. Scope: current primary-source research, read-only inspection of the existing local spike, and a separately executed bounded warm-runtime proof. No hardware, account, payment, signup, or signing changes were made.
 
 ## Follow-up: owner accepts on-demand free renewal

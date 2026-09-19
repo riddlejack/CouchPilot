@@ -29,6 +29,10 @@ uv build --no-sources
 uv tool install --force dist/home_media-*.whl
 ```
 
+## Updating an existing installation
+
+After pulling changes, run `uv tool install --force --editable .`. Existing Apple TV pairing and `agent.yaml` configuration remain in place. Only the Apple TV agent commands are shipped now; see [the archive note](HISTORY.md) if you used the earlier room controller or Siri broker.
+
 ## Register the MCP server
 
 The guided setup prints these commands. Both clients launch the same installed stdio server:
