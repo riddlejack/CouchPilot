@@ -59,7 +59,7 @@ from home_media.models import (
     PowerState,
     SupportLevel,
 )
-from home_media.registry import RoomRegistry
+from home_media.registry import DeviceRegistry
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -128,7 +128,7 @@ class AppleTVAdapter:
 
     name = "apple_tv"
 
-    def __init__(self, registry: RoomRegistry, *, scan_timeout: float = 5.0) -> None:
+    def __init__(self, registry: DeviceRegistry, *, scan_timeout: float = 5.0) -> None:
         self.registry = registry
         self.scan_timeout = scan_timeout
         self._storage: FileStorage | None = None

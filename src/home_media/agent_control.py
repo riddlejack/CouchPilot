@@ -1,7 +1,7 @@
 """Small, model-independent Apple TV agent service.
 
 One owner per physical device, compact fresh observations, and no automatic
-mutation retries. The older room/scene API remains available independently.
+mutation retries.
 """
 
 from __future__ import annotations
@@ -27,14 +27,10 @@ from home_media.agent_urls import validate_app_store_detail_url
 from home_media.config import ensure_private_dir, validate_private_file, write_private_text
 from home_media.errors import ConfigError, ErrorCode, SafetyBlockedError, UnsupportedError
 from home_media.models import (
-    DeviceKind,
-    DeviceRef,
     DiscoveredEndpoint,
-    HomeConfig,
     PowerState,
-    RoomConfig,
 )
-from home_media.registry import RoomRegistry
+from home_media.registry import DeviceRegistry
 from home_media.wda import WDAClient, WDAError, WDAObservation
 
 DEFAULT_AGENT_CONFIG = Path.home() / ".config" / "home-media" / "agent.yaml"
@@ -258,17 +254,7 @@ class AppleTVAgent:
         self._runtime: dict[str, Any] = {}
         self._observations: dict[str, AgentObservation] = {}
         self._lease_dir = lease_dir or DEFAULT_AGENT_CONFIG.parent / "locks"
-        rooms = [
-            RoomConfig(key=d.key, display_name=d.name, apple_tv_id=d.stable_id)
-            for d in config.devices
-            if d.stable_id
-        ]
-        devices = [
-            DeviceRef(id=d.stable_id, kind=DeviceKind.APPLE_TV, room_key=d.key, adapter="apple_tv")
-            for d in config.devices
-            if d.stable_id
-        ]
-        self.adapter = AppleTVAdapter(RoomRegistry(HomeConfig(rooms=rooms, devices=devices)))
+        self.adapter = AppleTVAdapter(DeviceRegistry())
 
     def device(self, key: str) -> AgentDevice:
         for device in self.config.devices:
