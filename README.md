@@ -26,7 +26,7 @@ flowchart TD
 
 ## Why CouchPilot?
 
-I started this because I hadn’t found the full watch-and-troubleshoot workflow I wanted, and recently discovered [Apple TV MCP](https://github.com/trevor-nichols/appletv-mcp) as an alternative. Its visual route requests individual screenshots; CouchPilot uses a signed WDA helper for **structured UI labels and focus, text-first observations, and freshness-checked actions**. We’ve verified that loop on a real Apple TV. [Comparison and tradeoffs →](docs/ALTERNATIVES.md)
+Alternatives such as [Apple TV MCP](https://github.com/trevor-nichols/appletv-mcp) use individual screenshots; CouchPilot uses a signed WDA helper for **structured UI labels and focus, text-first observations, and freshness-checked actions**. We’ve verified that loop on a real Apple TV. [Comparison and tradeoffs →](docs/ALTERNATIVES.md)
 
 **[Get started →](docs/AGENT_QUICKSTART.md)** · [What works today](docs/COMPATIBILITY.md) · [MIT license](LICENSE)
 
