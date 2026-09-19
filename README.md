@@ -15,11 +15,11 @@ A local, open-source bridge for **Codex, Claude Code, and other MCP agents**. No
 ## How it works
 
 ```mermaid
-flowchart LR
+flowchart TD
     You["You"] -->|"Plain English"| Agent["Your agent"]
-    Agent <-->|"MCP tools and results"| Bridge["CouchPilot on your computer"]
-    Bridge <-->|"Direct commands via pyatv"| TV["Apple TV"]
-    Bridge <-->|"Screen and UI via optional WDA helper"| TV
+    Agent <-->|"MCP tools and results"| Bridge["CouchPilot<br/>on your computer"]
+    Bridge <-->|"pyatv<br/>Direct commands"| TV["Apple TV"]
+    Bridge <-->|"Optional WDA helper<br/>Screen and UI"| TV
 ```
 
 [pyatv](https://github.com/postlund/pyatv) handles power, playback, app launches, and typing over your local network. For tasks that need the screen, a signed [WebDriverAgent](https://github.com/appium/WebDriverAgent) helper on the Apple TV returns UI labels, focus, and screenshots. Your existing agent chooses the next action and checks the result, using compact text observations first and images when needed.
