@@ -7,6 +7,7 @@ import plistlib
 import signal
 import subprocess
 import sys
+import threading
 import time
 from collections.abc import Mapping, Sequence
 from contextlib import suppress
@@ -14,6 +15,8 @@ from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import BinaryIO
+
+import pytest
 
 from home_media.wda_runtime import (
     WDARuntime,
@@ -590,6 +593,7 @@ def test_failed_stop_cannot_orphan_process_by_starting_replacement(tmp_path: Pat
     runtime.stop()
 
 
+@pytest.mark.skipif(os.name != "posix", reason="process-group signals require POSIX")
 def test_stop_kills_child_that_outlives_process_group_leader(tmp_path: Path) -> None:
     child_pid_path = tmp_path / "child.pid"
     child_code = (
@@ -599,38 +603,50 @@ def test_stop_kills_child_that_outlives_process_group_leader(tmp_path: Path) -> 
         "    handle.write(str(os.getpid()))\n"
         "time.sleep(60)\n"
     )
-    leader_code = (
-        "import subprocess, sys, time\n"
-        "subprocess.Popen([sys.executable, '-c', sys.argv[1], sys.argv[2]])\n"
-        "time.sleep(60)\n"
-    )
-    spawned: subprocess.Popen[bytes] | None = None
+    leader_code = "import time; time.sleep(60)"
+    spawned_leader: subprocess.Popen[bytes] | None = None
+    spawned_child: subprocess.Popen[bytes] | None = None
+    child_reaper: threading.Thread | None = None
     signals: list[int] = []
 
     def factory(
         _argv: Sequence[str], env: Mapping[str, str], log: BinaryIO
     ) -> subprocess.Popen[bytes]:
-        nonlocal spawned
-        spawned = subprocess.Popen(  # noqa: S603 - fixed local Python test fixture
-            [sys.executable, "-c", leader_code, child_code, str(child_pid_path)],
+        nonlocal child_reaper, spawned_child, spawned_leader
+        spawned_leader = subprocess.Popen(  # noqa: S603 - fixed local Python fixture
+            [sys.executable, "-c", leader_code],
             stdin=subprocess.DEVNULL,
             stdout=log,
             stderr=subprocess.STDOUT,
             env=dict(env),
             close_fds=True,
-            start_new_session=True,
+            process_group=0,
         )
-        return spawned
+        spawned_child = subprocess.Popen(  # noqa: S603 - fixed local Python fixture
+            [sys.executable, "-c", child_code, str(child_pid_path)],
+            stdin=subprocess.DEVNULL,
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            env=dict(env),
+            close_fds=True,
+            process_group=spawned_leader.pid,
+        )
+        child_reaper = threading.Thread(target=spawned_child.wait, daemon=True)
+        child_reaper.start()
+        return spawned_leader
 
     def signal_group(pgid: int, sig: int) -> None:
         signals.append(sig)
         os.killpg(pgid, sig)
 
-    config = replace(_native_config(tmp_path), stop_timeout_s=0.2)
+    config, _ = _fixture_tree(tmp_path)
+    config = replace(config, stop_timeout_s=0.2)
     runtime = WDARuntime(
         config,
+        command_runner=_runner(_profile(expires_at=NOW + timedelta(days=6))),
         process_factory=factory,
         group_signaler=signal_group,
+        now=lambda: NOW,
     )
     try:
         assert runtime.start().state is WDARuntimeState.STARTING
@@ -651,11 +667,16 @@ def test_stop_kills_child_that_outlives_process_group_leader(tmp_path: Path) -> 
         else:
             raise AssertionError("owned child process survived runtime.stop()")
     finally:
-        if spawned is not None:
+        if spawned_leader is not None:
             with suppress(ProcessLookupError):
-                os.killpg(spawned.pid, signal.SIGKILL)
+                os.killpg(spawned_leader.pid, signal.SIGKILL)
             try:
-                spawned.wait(timeout=2.0)
+                spawned_leader.wait(timeout=2.0)
             except subprocess.TimeoutExpired:
-                spawned.kill()
-                spawned.wait(timeout=2.0)
+                spawned_leader.kill()
+                spawned_leader.wait(timeout=2.0)
+        if spawned_child is not None and spawned_child.poll() is None:
+            spawned_child.kill()
+            spawned_child.wait(timeout=2.0)
+        if child_reaper is not None:
+            child_reaper.join(timeout=2.0)

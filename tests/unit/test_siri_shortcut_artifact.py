@@ -1,6 +1,9 @@
 import os
+import shutil
 import subprocess
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "shortcuts" / "Home Media.cherri"
@@ -45,6 +48,7 @@ def test_connection_helper_never_prints_the_token() -> None:
     assert "PASTE-THE-PRIVATE-BROKER-TOKEN" not in script
 
 
+@pytest.mark.skipif(shutil.which("zsh") is None, reason="macOS Shortcut builder requires zsh")
 def test_shortcut_builder_injects_explicit_broker_url(tmp_path: Path) -> None:
     fake_cherri = tmp_path / "cherri"
     captured_source = tmp_path / "captured.cherri"

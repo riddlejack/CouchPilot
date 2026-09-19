@@ -8,6 +8,7 @@ import threading
 from pathlib import Path
 
 import pytest
+from click import unstyle
 from typer.testing import CliRunner
 
 from home_media import agent_cli
@@ -703,7 +704,7 @@ def test_configure_rejects_invalid_backend_inputs(
     )
 
     assert result.exit_code == 2
-    assert expected in " ".join(result.output.replace("│", " ").split())
+    assert expected in " ".join(unstyle(result.output).replace("│", " ").split())
     assert not config_path.exists()
 
 
