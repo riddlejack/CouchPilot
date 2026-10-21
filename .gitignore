@@ -1,6 +1,5 @@
 .venv/
 .venv-pmd3/
-.venv-discovery/
 __pycache__/
 .pytest_cache/
 .mypy_cache/
@@ -17,29 +16,12 @@ observer_bindings.json
 airplay-capture.json
 airplay-frames/
 pyatv.conf
-shortcut_idempotency.json
-.shortcut_idempotency.json.lock
-broker_idempotency.json
-.broker_idempotency.json.lock
-broker-token
 *.pem
 *.key
-
-# Generated Apple Shortcut artifacts (signed files may contain import answers)
-shortcuts/*.shortcut
-shortcuts/*.plist
-shortcuts/*_processed.cherri
-dist/*.shortcut
 
 # Local private runtime / live reports (may contain LAN details)
 docs/live/
 .home-media/
-
-# Private discovery inventory (LAN addresses / stable IDs) — never publish
-discovery/NETWORK_SNAPSHOT.md
-discovery/NETWORK_SNAPSHOT.private.md
-discovery/devices.yaml
-discovery/*.private.yaml
 
 # Calibration screenshots / recipe fixtures may contain profile/viewing data
 .private/

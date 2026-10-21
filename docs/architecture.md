@@ -12,6 +12,6 @@ Direct control works without WDA. Visual press/select/type requires a recent obs
 
 The native runtime can launch an already installed helper without Xcode in the running path. Initial signing and free-profile renewal still require the documented Apple developer setup. Access is checked on demand; there is no scheduled renewal service.
 
-Apple TV wake/sleep and volume buttons remain available. Whether these also affect a connected TV or receiver depends on the hardware and HDMI-CEC configuration; CouchPilot does not separately control those devices. Sony/Android TV, Sonos, Siri, and room/scene services are outside the active package. See [the archive note](HISTORY.md).
+Apple TV wake/sleep and volume buttons remain available. Whether these also affect a connected TV or receiver depends on the hardware and HDMI-CEC configuration; CouchPilot does not separately control those devices. Sony/Android TV, Sonos, Siri, and room/scene services are outside the active package. See [the archive note](history.md).
 
-See [setup](AGENT_QUICKSTART.md), [compatibility](COMPATIBILITY.md), and [live evidence](../research/AGENT_ACCEPTANCE_2026-09-19.md).
+See [setup](quickstart.md), [compatibility](compatibility.md), and [live evidence](acceptance.md).

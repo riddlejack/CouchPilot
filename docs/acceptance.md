@@ -1,6 +1,6 @@
 # General agent bridge: live acceptance
 
-> Historical record: some experimental components mentioned here are now archived. See [the scope change](../docs/HISTORY.md) for the current package.
+> Historical record: some experimental components mentioned here are now archived. See [the scope change](history.md) for the current package.
 
 Target: a nearby Apple TV 4K (2nd generation), tvOS 26.6. Exact device
 binding was confirmed against the physical device's IP, its developer UDID,

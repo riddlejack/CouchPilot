@@ -45,4 +45,4 @@ Status date: 2026-09-19. This matrix separates observed hardware behavior from i
 
 The verified managed-runtime result does not establish first-time visual pairing, fresh Developer Disk Image setup, helper signing or installation, seven-day renewal avoidance, Linux/Windows WDA operation, or a durable consumer distribution route.
 
-See [AGENT_QUICKSTART.md](AGENT_QUICKSTART.md) and [the live acceptance record](../research/AGENT_ACCEPTANCE_2026-09-19.md).
+See [quickstart.md](quickstart.md) and [the live acceptance record](acceptance.md).

@@ -31,7 +31,7 @@ uv tool install --force dist/home_media-*.whl
 
 ## Updating an existing installation
 
-After pulling changes, run `uv tool install --force --editable .`. Existing Apple TV pairing and `agent.yaml` configuration remain in place. Only the Apple TV agent commands are shipped now; see [the archive note](HISTORY.md) if you used the earlier room controller or Siri broker.
+After pulling changes, run `uv tool install --force --editable .`. Existing Apple TV pairing and `agent.yaml` configuration remain in place. Only the Apple TV agent commands are shipped now; see [the archive note](history.md) if you used the earlier room controller or Siri broker.
 
 ## Register the MCP server
 
@@ -144,4 +144,4 @@ Run the bridge on a machine beside the Apple TV and let the agent call it throug
 
 This package exposes stdio MCP. It does not bundle a remote transport, authentication service, or public endpoint. A remote deployment must provide its own authenticated private connection to the local stdio bridge.
 
-See [COMPATIBILITY.md](COMPATIBILITY.md) for verified boundaries and [the live acceptance record](../research/AGENT_ACCEPTANCE_2026-09-19.md) for the demonstrated workflows.
+See [compatibility.md](compatibility.md) for verified boundaries and [the live acceptance record](acceptance.md) for the demonstrated workflows.

@@ -26,8 +26,8 @@ flowchart TD
 
 ## Why CouchPilot?
 
-Alternatives such as [Apple TV MCP](https://github.com/trevor-nichols/appletv-mcp) use individual screenshots; CouchPilot uses a signed WDA helper for **structured UI labels and focus, text-first observations, and freshness-checked actions**. We’ve verified that loop on a real Apple TV. [Comparison and tradeoffs →](docs/ALTERNATIVES.md)
+Alternatives such as [Apple TV MCP](https://github.com/trevor-nichols/appletv-mcp) use individual screenshots; CouchPilot uses a signed WDA helper for **structured UI labels and focus, text-first observations, and freshness-checked actions**. We’ve verified that loop on a real Apple TV. [Comparison and tradeoffs →](docs/alternatives.md)
 
-**[Get started →](docs/AGENT_QUICKSTART.md)** · [What works today](docs/COMPATIBILITY.md) · [MIT license](LICENSE)
+**[Get started →](docs/quickstart.md)** · [What works today](docs/compatibility.md) · [Architecture](docs/architecture.md) · [MIT license](LICENSE)
 
 **Early preview:** playback, app navigation, and a picture-setting change have been tested on a real Apple TV. Full visual control currently needs a Mac and a signed helper; free signing requires occasional renewal. Cross-service show discovery and seamless setup are still works in progress.
